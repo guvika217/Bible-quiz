@@ -243,8 +243,6 @@ export default function PublicQuizPlayPage() {
 
   // --- VIEW 3: Final Completion & Score Report ---
   if (result) {
-    const accuracy =
-      result.max_score > 0 ? Math.round((result.score / result.max_score) * 100) : 0;
     const isDisq = result.completion_status === "disqualified";
 
     return (
@@ -264,45 +262,32 @@ export default function PublicQuizPlayPage() {
                 isDisq ? "bg-rose-100 text-rose-800" : "bg-indigo-50 text-indigo-700"
               }`}
             >
-              {isDisq ? "Disqualified for Cheating" : "Quiz Completed"}
+              {isDisq ? "Disqualified for Cheating" : "Quiz Submitted Successfully"}
             </span>
             <h1 className="text-3xl font-black text-slate-900 mt-2">
-              {isDisq ? "Attempt Disqualified" : `Well Done, ${result.participant_name}!`}
+              {isDisq ? "Attempt Disqualified" : `Thank You, ${result.participant_name}!`}
             </h1>
             <p className="text-xs text-slate-500 mt-1">
               {isDisq
                 ? "You exceeded the 3 security warning limit due to tab switching or window blur."
-                : "Your speed and accuracy scores have been calculated and saved to the leaderboard."}
+                : "Your responses have been recorded securely. Results will be displayed soon!"}
             </p>
           </div>
 
-          <div className="grid grid-cols-3 gap-4 pt-4 border-t border-slate-100">
-            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-              <span className="text-xs text-slate-500 font-medium">Final Speed Score</span>
-              <p className="text-2xl font-black text-indigo-600 mt-1">
-                {result.score.toLocaleString()} <span className="text-xs text-slate-400">pts</span>
-              </p>
-            </div>
-            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-              <span className="text-xs text-slate-500 font-medium">Accuracy</span>
-              <p className="text-2xl font-black text-emerald-600 mt-1">{accuracy}%</p>
-            </div>
-            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-              <span className="text-xs text-slate-500 font-medium">Total Duration</span>
-              <p className="text-2xl font-black text-slate-800 mt-1">{result.duration_seconds}s</p>
-            </div>
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 text-center space-y-2">
+            <span className="text-2xl">⏳</span>
+            <h3 className="text-sm font-bold text-amber-900">
+              Results will be displayed soon
+            </h3>
+            <p className="text-xs text-amber-700 max-w-md mx-auto leading-relaxed">
+              The quiz evaluation is in progress. The official rankings and scores will be announced shortly by the organizers.
+            </p>
           </div>
 
-          <div className="pt-6 border-t border-slate-100 flex justify-center gap-4">
-            <Link
-              href={`/leaderboard?quizId=${result.quiz_id}`}
-              className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-sm transition shadow-sm"
-            >
-              View Official Leaderboard 🏆
-            </Link>
+          <div className="pt-4 border-t border-slate-100 flex justify-center">
             <Link
               href="/"
-              className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-sm transition"
+              className="px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl text-sm transition shadow-sm"
             >
               Return Home
             </Link>
