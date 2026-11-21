@@ -187,58 +187,53 @@ export default function PublicQuizPlayPage() {
 
   const currentQuestion: ParticipantQuestion | undefined = session?.questions[currentIndex];
 
-  const handleSelectChoice = (questionId: string, choice: string) => {
-    setSelectedAnswers((prev) => ({
-      ...prev,
-      [questionId]: choice,
-    }));
-
-    setQuestionResponseTimes((prev) => ({
-      ...prev,
-      [questionId]: Math.max(1, questionElapsed),
-    }));
-  };
-
-  const handleNextQuestion = () => {
-    if (!session) return;
-    if (currentIndex < session.questions.length - 1) {
-      setCurrentIndex((prev) => prev + 1);
-      setQuestionElapsed(0);
-    }
-  };
-
-  const handlePrevQuestion = () => {
-    if (currentIndex > 0) {
-      setCurrentIndex((prev) => prev - 1);
-      setQuestionElapsed(0);
-    }
-  };
-
-  // Submit attempt
-  const handleSubmitQuiz = async () => {
+  // 1-Click Instant Answer Handler: selects choice, records response time, and advances or auto-submits immediately
+  const handleSelectChoice = async (questionId: string, choice: string) => {
     if (!session || isSubmitting) return;
 
-    setIsSubmitting(true);
-    setError(null);
+    const recordedTime = Math.max(1, questionElapsed);
 
-    const answersList = session.questions.map((q) => ({
-      question_id: q.id,
-      selected_answer: selectedAnswers[q.id] || "NO_ANSWER",
-      response_time_seconds: questionResponseTimes[q.id] || 0,
-    }));
+    const updatedAnswers = {
+      ...selectedAnswers,
+      [questionId]: choice,
+    };
+    setSelectedAnswers(updatedAnswers);
 
-    try {
-      const res = await quizService.submitQuizAttempt(
-        session.attempt.id,
-        answersList,
-        elapsedSeconds,
-        warningCount
-      );
-      setResult(res);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to submit answers");
-    } finally {
-      setIsSubmitting(false);
+    const updatedTimes = {
+      ...questionResponseTimes,
+      [questionId]: recordedTime,
+    };
+    setQuestionResponseTimes(updatedTimes);
+
+    // If this was the last question, automatically submit immediately without needing any extra submit button!
+    if (currentIndex >= session.questions.length - 1) {
+      setIsSubmitting(true);
+      setError(null);
+
+      const answersList = session.questions.map((q) => ({
+        question_id: q.id,
+        selected_answer: q.id === questionId ? choice : (updatedAnswers[q.id] || "NO_ANSWER"),
+        response_time_seconds: q.id === questionId ? recordedTime : (updatedTimes[q.id] || 0),
+      }));
+
+      try {
+        const res = await quizService.submitQuizAttempt(
+          session.attempt.id,
+          answersList,
+          elapsedSeconds,
+          warningCount
+        );
+        setResult(res);
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Failed to submit answers");
+        setIsSubmitting(false);
+      }
+    } else {
+      // Instant transition to next question (slight 150ms visual feedback so the participant sees their selection click)
+      setTimeout(() => {
+        setCurrentIndex((prev) => prev + 1);
+        setQuestionElapsed(0);
+      }, 150);
     }
   };
 
@@ -314,7 +309,6 @@ export default function PublicQuizPlayPage() {
 
   // --- VIEW 2: Active Quiz Gameplay ---
   if (session && currentQuestion) {
-    const isLast = currentIndex === session.questions.length - 1;
     const answeredCount = Object.keys(selectedAnswers).length;
 
     return (
@@ -436,32 +430,15 @@ export default function PublicQuizPlayPage() {
 
           {/* Navigation Controls */}
           <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
-            <button
-              type="button"
-              disabled={currentIndex === 0}
-              onClick={handlePrevQuestion}
-              className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40"
-            >
-              ← Previous
-            </button>
+            <span className="text-xs text-slate-400 font-medium italic">
+              ⚡ 1-Click Answer: Tap an option to record and immediately advance
+            </span>
 
-            {isLast ? (
-              <button
-                type="button"
-                disabled={isSubmitting}
-                onClick={handleSubmitQuiz}
-                className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow-md transition disabled:opacity-50"
-              >
-                {isSubmitting ? "Scoring Quiz..." : "Submit All Answers ✓"}
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={handleNextQuestion}
-                className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-xs shadow-md transition"
-              >
-                Next Question →
-              </button>
+            {isSubmitting && (
+              <span className="text-xs font-bold text-indigo-600 animate-pulse flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-indigo-600 animate-ping" />
+                Scoring Attempt...
+              </span>
             )}
           </div>
         </div>
