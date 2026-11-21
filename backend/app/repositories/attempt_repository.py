@@ -44,6 +44,30 @@ class AttemptRepository:
         return results[0] if results else None
 
     @staticmethod
+    async def record_answers_batch(answers: list[dict[str, Any]]) -> None:
+        """Batch insert answers in a single multi-row SQL statement for maximum speed."""
+        if not answers:
+            return
+
+        placeholders = []
+        params = []
+        for ans in answers:
+            placeholders.append("(?, ?, ?, ?, ?, ?, ?, ?)")
+            params.extend([
+                ans["id"],
+                ans["attempt_id"],
+                ans["question_id"],
+                ans["selected_answer"],
+                1 if ans.get("is_correct") else 0,
+                ans.get("points_awarded", 0),
+                ans.get("response_time_seconds", 0.0),
+                ans["answered_at"],
+            ])
+
+        sql = f"INSERT INTO attempt_answers (id, attempt_id, question_id, selected_answer, is_correct, points_awarded, response_time_seconds, answered_at) VALUES {', '.join(placeholders)};"
+        await d1_client.execute(sql, params)
+
+    @staticmethod
     async def record_answer(answer_data: dict[str, Any]) -> dict[str, Any]:
         """Insert or replace submitted answer for attempt including response time."""
         sql = (

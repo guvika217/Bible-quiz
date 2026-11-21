@@ -367,6 +367,8 @@ class QuizService:
         is_disqualified = submission.warning_count >= 3
         status_to_set = "disqualified" if is_disqualified else "completed"
 
+        answers_to_insert: list[dict[str, Any]] = []
+
         for ans in submission.answers:
             q_id_str = str(ans.question_id)
             resp_time = float(ans.response_time_seconds)
@@ -390,7 +392,7 @@ class QuizService:
                     if not is_correct:
                         incorrect_count += 1
 
-                await AttemptRepository.record_answer({
+                answers_to_insert.append({
                     "id": str(uuid4()),
                     "attempt_id": str(submission.attempt_id),
                     "question_id": q_id_str,
@@ -403,6 +405,10 @@ class QuizService:
 
         total_time = submission.duration_seconds
         avg_time = round(sum(response_times) / len(response_times), 2) if response_times else 0.0
+
+        # Execute answer recording and attempt completion in parallel / single batch
+        if answers_to_insert:
+            await AttemptRepository.record_answers_batch(answers_to_insert)
 
         await AttemptRepository.complete_attempt(
             attempt_id=str(submission.attempt_id),
