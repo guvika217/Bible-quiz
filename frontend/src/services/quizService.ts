@@ -73,17 +73,19 @@ export const quizService = {
   },
 
   /**
-   * Public: Submit answers and complete attempt
+   * Public: Submit answers with speed time and anti-cheat warning count
    */
   submitQuizAttempt: (
     attemptId: string,
-    answers: Array<{ question_id: string; selected_answer: string }>,
-    durationSeconds: number
+    answers: Array<{ question_id: string; selected_answer: string; response_time_seconds: number }>,
+    durationSeconds: number,
+    warningCount: number = 0
   ): Promise<AttemptResult> => {
     return apiClient.post<AttemptResult>("/quizzes/public/submit", {
       attempt_id: attemptId,
       answers,
       duration_seconds: durationSeconds,
+      warning_count: warningCount,
     });
   },
 

@@ -12,12 +12,15 @@ class LeaderboardEntry(BaseModel):
     rank: int = Field(ge=1, description="Leaderboard placement rank")
     attempt_id: UUID = Field(description="Attempt UUID")
     participant_name: str = Field(description="Participant display name")
-    score: int = Field(ge=0, description="Total points scored")
+    score: int = Field(ge=0, description="Total points scored (speed + accuracy weighted)")
     max_score: int = Field(ge=0, description="Total possible points")
     accuracy_percentage: float = Field(ge=0.0, le=100.0, description="Accuracy percentage")
     correct_count: int = Field(ge=0, description="Correct questions answered")
     incorrect_count: int = Field(ge=0, description="Incorrect questions answered")
-    duration_seconds: int | None = Field(default=None, description="Time taken in seconds")
+    total_time_seconds: int = Field(ge=0, default=0, description="Total time taken in seconds")
+    avg_time_seconds: float = Field(ge=0.0, default=0.0, description="Average response time per question")
+    warning_count: int = Field(ge=0, default=0, description="Anti-cheat warnings received")
+    completion_status: str = Field(default="completed")
     completed_at: datetime | None = Field(default=None, description="Completion timestamp")
 
 

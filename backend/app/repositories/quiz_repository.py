@@ -65,28 +65,15 @@ class QuizRepository:
         return quiz_data
 
     @staticmethod
-    async def update_quiz(quiz_id: str, updates: dict[str, Any]) -> bool:
-        """Update quiz fields."""
-        fields = []
-        params = []
-        for k, v in updates.items():
-            fields.append(f"{k} = ?")
-            params.append(v)
-        fields.append("updated_at = datetime('now')")
-        params.append(str(quiz_id))
-
-        sql = f"UPDATE quizzes SET {', '.join(fields)} WHERE id = ?;"
-        await d1_client.execute(sql, params)
-        return True
-
-    @staticmethod
     async def get_quiz_leaderboard(quiz_id: str, limit: int = 100) -> list[dict[str, Any]]:
-        """Fetch ranked leaderboard for a quiz."""
+        """Fetch ranked leaderboard for a quiz sorted by highest score, then fastest duration."""
         sql = (
             "SELECT id, quiz_id, participant_name, score, max_score, "
             "correct_count, incorrect_count, completion_status, started_at, "
-            "completed_at, duration_seconds "
-            "FROM quiz_attempts WHERE quiz_id = ? AND completion_status = 'completed' "
-            "ORDER BY score DESC, duration_seconds ASC, completed_at ASC LIMIT ?;"
+            "completed_at, duration_seconds, total_time_seconds, avg_time_seconds, warning_count "
+            "FROM quiz_attempts WHERE quiz_id = ? AND completion_status IN ('completed', 'disqualified') "
+            "ORDER BY "
+            "CASE WHEN completion_status = 'disqualified' THEN 1 ELSE 0 END ASC, "
+            "score DESC, total_time_seconds ASC, avg_time_seconds ASC, completed_at ASC LIMIT ?;"
         )
         return await d1_client.execute(sql, [str(quiz_id), limit])

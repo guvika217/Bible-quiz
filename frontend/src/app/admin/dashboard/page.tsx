@@ -359,7 +359,7 @@ export default function AdminDashboardPage() {
                           / <span className="text-rose-500">{entry.incorrect_count}</span>
                         </td>
                         <td className="py-4 px-6 text-slate-500">
-                          {entry.duration_seconds !== null ? `${entry.duration_seconds}s` : "-"}
+                          {entry.total_time_seconds !== undefined && entry.total_time_seconds !== null ? `${entry.total_time_seconds}s` : (entry.duration_seconds !== null && entry.duration_seconds !== undefined ? `${entry.duration_seconds}s` : "-")}
                         </td>
                       </tr>
                     ))}

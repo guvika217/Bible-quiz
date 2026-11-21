@@ -23,6 +23,14 @@ export const Header: React.FC = () => {
         </Link>
 
         <nav className="flex items-center gap-4 sm:gap-6">
+          {/* Public Leaderboard Shortcut */}
+          <Link
+            href="/leaderboard"
+            className="text-xs sm:text-sm font-semibold text-slate-600 hover:text-indigo-600 transition-colors flex items-center gap-1"
+          >
+            <span>🏆</span> Leaderboard
+          </Link>
+
           {/* Quizzes shortcut for logged-in users */}
           {(isAdmin || isSuperAdmin) && (
             <Link
@@ -33,9 +41,8 @@ export const Header: React.FC = () => {
             </Link>
           )}
 
-          {/* EXACT SINGLE ROLE PILL DISPLAY */}
+          {/* Role Pill Display */}
           {isSuperAdmin ? (
-            /* Super Admin View: ONLY Super Admin Panel */
             <Link
               href="/admin/superadmin"
               className="text-xs sm:text-sm font-bold px-3.5 py-1.5 rounded-lg border bg-amber-500 text-white border-amber-600 shadow-sm shadow-amber-200 hover:bg-amber-600 transition-all flex items-center gap-1.5"
@@ -43,7 +50,6 @@ export const Header: React.FC = () => {
               <span>⚡</span> Super Admin Panel
             </Link>
           ) : isAdmin ? (
-            /* Admin View: ONLY Admin Panel */
             <Link
               href="/admin/dashboard"
               className="text-xs sm:text-sm font-semibold px-3.5 py-1.5 rounded-lg border bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100 transition-colors"
@@ -51,7 +57,6 @@ export const Header: React.FC = () => {
               Admin Panel
             </Link>
           ) : (
-            /* Logged Out / Visitor View */
             <Link
               href="/admin/login"
               className="text-xs sm:text-sm font-semibold text-indigo-600 hover:text-indigo-700 bg-indigo-50 px-3.5 py-1.5 rounded-lg border border-indigo-100 transition-colors"

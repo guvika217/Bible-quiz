@@ -109,7 +109,11 @@ export interface LeaderboardEntry {
   accuracy_percentage: number;
   correct_count: number;
   incorrect_count: number;
-  duration_seconds: number | null;
+  total_time_seconds: number;
+  duration_seconds?: number | null;
+  avg_time_seconds: number;
+  warning_count: number;
+  completion_status: string;
   completed_at: string | null;
 }
 

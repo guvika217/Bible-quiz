@@ -190,11 +190,10 @@ class QuizService:
     async def delete_question(quiz_id: UUID, question_id: UUID) -> bool:
         return await QuestionRepository.delete_question(str(question_id), str(quiz_id))
 
-    # --- PUBLIC PARTICIPANT PLAY FLOW ---
+    # --- PUBLIC PARTICIPANT PLAY FLOW WITH SPEED + ACCURACY SCORING ---
 
     @staticmethod
     async def get_public_quiz_info(join_code: str) -> dict[str, Any]:
-        """Fetch public quiz metadata for participant registration."""
         quiz = await QuizRepository.get_by_join_code(join_code)
         if not quiz:
             raise AppException("Invalid quiz code or quiz not found", status_code=404)
@@ -210,7 +209,6 @@ class QuizService:
 
     @staticmethod
     async def join_quiz(join_input: AttemptJoin) -> dict[str, Any]:
-        """Participant enters name with join code to start an attempt session."""
         quiz = await QuizRepository.get_by_join_code(join_input.join_code)
         if not quiz:
             raise AppException("Quiz not found with this join code", status_code=404)
@@ -225,7 +223,8 @@ class QuizService:
         for r in q_records:
             opts = json.loads(r["options"]) if isinstance(r["options"], str) else r["options"]
             pts = r.get("points", 1)
-            max_possible_score += pts
+            # Base accuracy points (1000 base pts per question)
+            max_possible_score += (pts * 1000)
             participant_questions.append(
                 ParticipantQuestionResponse(
                     id=UUID(r["id"]),
@@ -271,35 +270,57 @@ class QuizService:
 
     @staticmethod
     async def submit_attempt(submission: AttemptSubmission) -> AttemptResultResponse:
-        """Evaluate submitted participant answers, compute score, and record to DB."""
+        """Evaluate submitted answers with Kahoot-style speed + accuracy algorithm.
+
+        Score per correct question = Base Points (1000) * (1 - (response_time / (2 * time_limit)))
+        Faster answer = Higher score. Incorrect answer = 0 points.
+        If warning_count >= 3 (tab switching / cheating), participant is marked 'disqualified'.
+        """
         attempt = await AttemptRepository.get_attempt_by_id(str(submission.attempt_id))
         if not attempt:
             raise AppException("Attempt session not found", status_code=404)
 
-        if attempt["completion_status"] == "completed":
+        if attempt["completion_status"] in ("completed", "disqualified"):
             raise AppException("This attempt has already been submitted and finalized", status_code=400)
 
         admin_questions = await QuestionRepository.get_quiz_questions_for_admin(attempt["quiz_id"])
         q_map = {str(q["id"]): q for q in admin_questions}
+        quiz = await QuizRepository.get_by_id(attempt["quiz_id"])
+        q_time_limit = (quiz.get("time_limit_seconds") or 30) if quiz else 30
 
-        score = 0
+        total_score = 0
         correct_count = 0
         incorrect_count = 0
-        max_score = sum(q.get("points", 1) for q in admin_questions)
+        max_possible_score = sum((q.get("points", 1) * 1000) for q in admin_questions)
+        response_times: list[float] = []
         now = datetime.now(UTC).isoformat()
+
+        # Check anti-cheat disqualification threshold (>= 3 warnings)
+        is_disqualified = submission.warning_count >= 3
+        status_to_set = "disqualified" if is_disqualified else "completed"
 
         for ans in submission.answers:
             q_id_str = str(ans.question_id)
+            resp_time = float(ans.response_time_seconds)
+            response_times.append(resp_time)
+
             if q_id_str in q_map:
                 target_q = q_map[q_id_str]
-                is_correct = ans.selected_answer.strip().lower() == target_q["correct_answer"].strip().lower()
-                pts = target_q.get("points", 1) if is_correct else 0
+                is_correct = (ans.selected_answer.strip().lower() == target_q["correct_answer"].strip().lower())
+                base_points = target_q.get("points", 1) * 1000
 
-                if is_correct:
-                    score += pts
+                # Speed score calculation:
+                # If answered in 0s -> 1000 pts. If answered at deadline -> 500 pts.
+                # If incorrect or disqualified -> 0 pts.
+                if is_correct and not is_disqualified:
+                    speed_factor = max(0.5, 1.0 - (resp_time / (2.0 * float(q_time_limit))))
+                    pts_awarded = round(base_points * speed_factor)
+                    total_score += pts_awarded
                     correct_count += 1
                 else:
-                    incorrect_count += 1
+                    pts_awarded = 0
+                    if not is_correct:
+                        incorrect_count += 1
 
                 await AttemptRepository.record_answer({
                     "id": str(uuid4()),
@@ -307,17 +328,24 @@ class QuizService:
                     "question_id": q_id_str,
                     "selected_answer": ans.selected_answer,
                     "is_correct": is_correct,
-                    "points_awarded": pts,
+                    "points_awarded": pts_awarded,
+                    "response_time_seconds": resp_time,
                     "answered_at": now,
                 })
 
+        total_time = submission.duration_seconds
+        avg_time = round(sum(response_times) / len(response_times), 2) if response_times else 0.0
+
         await AttemptRepository.complete_attempt(
             attempt_id=str(submission.attempt_id),
-            score=score,
-            max_score=max_score,
+            score=total_score,
+            max_score=max_possible_score,
             correct_count=correct_count,
             incorrect_count=incorrect_count,
-            duration_seconds=submission.duration_seconds,
+            total_time_seconds=total_time,
+            avg_time_seconds=avg_time,
+            warning_count=submission.warning_count,
+            completion_status=status_to_set,
             completed_at=now,
         )
 
@@ -325,13 +353,13 @@ class QuizService:
             id=UUID(attempt["id"]),
             quiz_id=UUID(attempt["quiz_id"]),
             participant_name=attempt["participant_name"],
-            completion_status="completed",
+            completion_status=status_to_set,
             started_at=attempt["started_at"],
-            score=score,
-            max_score=max_score,
+            score=total_score,
+            max_score=max_possible_score,
             correct_count=correct_count,
             incorrect_count=incorrect_count,
-            duration_seconds=submission.duration_seconds,
+            duration_seconds=total_time,
             completed_at=now,
         )
 
@@ -379,7 +407,9 @@ class QuizService:
             score = att.get("score", 0)
             max_score = att.get("max_score", 1) or 1
             accuracy = round((score / max_score) * 100.0, 1) if max_score > 0 else 0.0
-            duration = att.get("duration_seconds") or 0
+            duration = att.get("total_time_seconds") or att.get("duration_seconds") or 0
+            avg_time = float(att.get("avg_time_seconds") or 0.0)
+            warnings = att.get("warning_count") or 0
 
             scores.append(score)
             accuracies.append(accuracy)
@@ -406,7 +436,10 @@ class QuizService:
                     accuracy_percentage=accuracy,
                     correct_count=att.get("correct_count", 0),
                     incorrect_count=att.get("incorrect_count", 0),
-                    duration_seconds=duration,
+                    total_time_seconds=duration,
+                    avg_time_seconds=avg_time,
+                    warning_count=warnings,
+                    completion_status=att.get("completion_status", "completed"),
                     completed_at=att.get("completed_at"),
                 )
             )

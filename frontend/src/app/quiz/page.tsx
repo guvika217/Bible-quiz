@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { quizService } from "@/services/quizService";
@@ -15,7 +15,7 @@ export default function PublicQuizPlayPage() {
   const searchParams = useSearchParams();
   const codeParam = searchParams.get("code") || "";
 
-  // 1. Participant Registration / Join Step
+  // 1. Participant Registration Step
   const [joinCode, setJoinCode] = useState(codeParam.toUpperCase());
   const [participantName, setParticipantName] = useState("");
   const [publicInfo, setPublicInfo] = useState<PublicQuizInfo | null>(null);
@@ -24,8 +24,15 @@ export default function PublicQuizPlayPage() {
   const [session, setSession] = useState<ParticipantAttemptSession | null>(null);
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string>>({});
+  const [questionResponseTimes, setQuestionResponseTimes] = useState<Record<string, number>>({});
   const [elapsedSeconds, setElapsedSeconds] = useState<number>(0);
-  const [questionTimer, setQuestionTimer] = useState<number>(30);
+  const [questionElapsed, setQuestionElapsed] = useState<number>(0);
+
+  // Anti-cheat state
+  const [warningCount, setWarningCount] = useState<number>(0);
+  const [showWarningModal, setShowWarningModal] = useState<boolean>(false);
+  const [warningMessage, setWarningMessage] = useState<string>("");
+  const [isDisqualified, setIsDisqualified] = useState<boolean>(false);
 
   // 3. Statuses & Final Result
   const [isJoining, setIsJoining] = useState(false);
@@ -43,17 +50,94 @@ export default function PublicQuizPlayPage() {
     }
   }, [codeParam]);
 
-  // Overall and Question Timer
+  // Total timer and current question timer tick
   useEffect(() => {
-    if (!session || result) return;
+    if (!session || result || isDisqualified) return;
 
     const interval = setInterval(() => {
       setElapsedSeconds((prev) => prev + 1);
-      setQuestionTimer((prev) => (prev > 0 ? prev - 1 : 0));
+      setQuestionElapsed((prev) => prev + 1);
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [session, result]);
+  }, [session, result, isDisqualified]);
+
+  // Request Fullscreen helper
+  const enterFullscreen = () => {
+    try {
+      const docEl = document.documentElement;
+      if (docEl.requestFullscreen) {
+        docEl.requestFullscreen().catch(() => {});
+      }
+    } catch {
+      // Ignore fullscreen refusal
+    }
+  };
+
+  // Auto-submit when disqualified
+  const triggerDisqualification = useCallback(async (finalWarningCount: number) => {
+    if (!session) return;
+    setIsDisqualified(true);
+    setIsSubmitting(true);
+
+    const answersList = session.questions.map((q) => ({
+      question_id: q.id,
+      selected_answer: selectedAnswers[q.id] || "NO_ANSWER",
+      response_time_seconds: questionResponseTimes[q.id] || 0,
+    }));
+
+    try {
+      const res = await quizService.submitQuizAttempt(
+        session.attempt.id,
+        answersList,
+        elapsedSeconds,
+        finalWarningCount
+      );
+      setResult(res);
+    } catch (err) {
+      console.error("Disqualification submission failed:", err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [session, selectedAnswers, questionResponseTimes, elapsedSeconds]);
+
+  // Anti-Cheat: Visibility Change & Window Blur Detection (Tab Switching / AI apps)
+  useEffect(() => {
+    if (!session || result || isDisqualified) return;
+
+    const handleCheatViolation = (reason: string) => {
+      setWarningCount((prev) => {
+        const nextCount = prev + 1;
+        setWarningMessage(
+          `Security Warning #${nextCount} of 3: ${reason}. Tab switching, window minimization, or background application switching is strictly forbidden.`
+        );
+        setShowWarningModal(true);
+
+        if (nextCount >= 3) {
+          triggerDisqualification(nextCount);
+        }
+        return nextCount;
+      });
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        handleCheatViolation("You switched away from the active quiz tab");
+      }
+    };
+
+    const handleWindowBlur = () => {
+      handleCheatViolation("The quiz window lost focus");
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("blur", handleWindowBlur);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("blur", handleWindowBlur);
+    };
+  }, [session, result, isDisqualified, triggerDisqualification]);
 
   // Handle participant join
   const handleJoin = async (e: React.FormEvent) => {
@@ -74,7 +158,8 @@ export default function PublicQuizPlayPage() {
         return;
       }
       setSession(sess);
-      setQuestionTimer(sess.quiz.time_limit_seconds || 30);
+      setQuestionElapsed(0);
+      enterFullscreen();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to join quiz");
     } finally {
@@ -82,26 +167,32 @@ export default function PublicQuizPlayPage() {
     }
   };
 
+  const currentQuestion: ParticipantQuestion | undefined = session?.questions[currentIndex];
+
   const handleSelectChoice = (questionId: string, choice: string) => {
     setSelectedAnswers((prev) => ({
       ...prev,
       [questionId]: choice,
     }));
-  };
 
-  const currentQuestion: ParticipantQuestion | undefined = session?.questions[currentIndex];
+    setQuestionResponseTimes((prev) => ({
+      ...prev,
+      [questionId]: Math.max(1, questionElapsed),
+    }));
+  };
 
   const handleNextQuestion = () => {
     if (!session) return;
     if (currentIndex < session.questions.length - 1) {
       setCurrentIndex((prev) => prev + 1);
-      setQuestionTimer(session.quiz.time_limit_seconds || 30);
+      setQuestionElapsed(0);
     }
   };
 
   const handlePrevQuestion = () => {
     if (currentIndex > 0) {
       setCurrentIndex((prev) => prev - 1);
+      setQuestionElapsed(0);
     }
   };
 
@@ -112,16 +203,18 @@ export default function PublicQuizPlayPage() {
     setIsSubmitting(true);
     setError(null);
 
-    const answersList = Object.entries(selectedAnswers).map(([qId, answer]) => ({
-      question_id: qId,
-      selected_answer: answer,
+    const answersList = session.questions.map((q) => ({
+      question_id: q.id,
+      selected_answer: selectedAnswers[q.id] || "NO_ANSWER",
+      response_time_seconds: questionResponseTimes[q.id] || 0,
     }));
 
     try {
       const res = await quizService.submitQuizAttempt(
         session.attempt.id,
         answersList,
-        elapsedSeconds
+        elapsedSeconds,
+        warningCount
       );
       setResult(res);
     } catch (err: unknown) {
@@ -135,31 +228,42 @@ export default function PublicQuizPlayPage() {
   if (result) {
     const accuracy =
       result.max_score > 0 ? Math.round((result.score / result.max_score) * 100) : 0;
+    const isDisq = result.completion_status === "disqualified";
 
     return (
       <div className="max-w-2xl mx-auto px-4 py-16">
         <div className="bg-white rounded-3xl p-8 sm:p-10 border border-slate-200 shadow-xl text-center space-y-6">
-          <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto text-3xl font-black">
-            ✓
+          <div
+            className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto text-3xl font-black ${
+              isDisq ? "bg-rose-100 text-rose-600" : "bg-emerald-100 text-emerald-600"
+            }`}
+          >
+            {isDisq ? "✕" : "✓"}
           </div>
 
           <div>
-            <span className="px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700">
-              Quiz Completed
+            <span
+              className={`px-3 py-1 rounded-full text-xs font-bold ${
+                isDisq ? "bg-rose-100 text-rose-800" : "bg-indigo-50 text-indigo-700"
+              }`}
+            >
+              {isDisq ? "Disqualified for Cheating" : "Quiz Completed"}
             </span>
             <h1 className="text-3xl font-black text-slate-900 mt-2">
-              Well Done, {result.participant_name}!
+              {isDisq ? "Attempt Disqualified" : `Well Done, ${result.participant_name}!`}
             </h1>
             <p className="text-xs text-slate-500 mt-1">
-              Your results have been recorded in the platform database.
+              {isDisq
+                ? "You exceeded the 3 security warning limit due to tab switching or window blur."
+                : "Your speed and accuracy scores have been calculated and saved to the leaderboard."}
             </p>
           </div>
 
           <div className="grid grid-cols-3 gap-4 pt-4 border-t border-slate-100">
             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-              <span className="text-xs text-slate-500 font-medium">Final Score</span>
+              <span className="text-xs text-slate-500 font-medium">Final Speed Score</span>
               <p className="text-2xl font-black text-indigo-600 mt-1">
-                {result.score} <span className="text-xs text-slate-400">/ {result.max_score}</span>
+                {result.score.toLocaleString()} <span className="text-xs text-slate-400">pts</span>
               </p>
             </div>
             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
@@ -167,15 +271,21 @@ export default function PublicQuizPlayPage() {
               <p className="text-2xl font-black text-emerald-600 mt-1">{accuracy}%</p>
             </div>
             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-              <span className="text-xs text-slate-500 font-medium">Time Taken</span>
+              <span className="text-xs text-slate-500 font-medium">Total Duration</span>
               <p className="text-2xl font-black text-slate-800 mt-1">{result.duration_seconds}s</p>
             </div>
           </div>
 
           <div className="pt-6 border-t border-slate-100 flex justify-center gap-4">
             <Link
+              href={`/leaderboard?quizId=${result.quiz_id}`}
+              className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-sm transition shadow-sm"
+            >
+              View Official Leaderboard 🏆
+            </Link>
+            <Link
               href="/"
-              className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-sm transition"
+              className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-sm transition"
             >
               Return Home
             </Link>
@@ -191,7 +301,35 @@ export default function PublicQuizPlayPage() {
     const answeredCount = Object.keys(selectedAnswers).length;
 
     return (
-      <div className="max-w-3xl mx-auto px-4 py-10 space-y-6">
+      <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
+        {/* Anti-Cheat Warning Modal */}
+        {showWarningModal && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl max-w-md w-full p-6 text-center space-y-4 border border-rose-200 shadow-2xl animate-in zoom-in-95">
+              <div className="w-12 h-12 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto text-xl font-bold">
+                ⚠️
+              </div>
+              <h2 className="text-lg font-extrabold text-slate-900">Anti-Cheat Alert</h2>
+              <p className="text-xs text-rose-700 font-medium leading-relaxed">
+                {warningMessage}
+              </p>
+              <div className="text-xs text-slate-500 font-semibold">
+                Remaining warnings before automatic disqualification:{" "}
+                <span className="text-rose-600 font-bold">{Math.max(0, 3 - warningCount)}</span>
+              </div>
+              <button
+                onClick={() => {
+                  setShowWarningModal(false);
+                  enterFullscreen();
+                }}
+                className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl text-xs transition"
+              >
+                I Understand, Resume Fullscreen Quiz
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Game Header Bar */}
         <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex items-center justify-between">
           <div>
@@ -200,6 +338,11 @@ export default function PublicQuizPlayPage() {
           </div>
 
           <div className="flex items-center gap-4">
+            {warningCount > 0 && (
+              <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
+                ⚠️ {warningCount}/3 Warnings
+              </span>
+            )}
             <div className="text-right">
               <span className="text-[10px] uppercase font-bold text-slate-400 block">Question</span>
               <span className="text-sm font-bold text-indigo-600">
@@ -207,8 +350,8 @@ export default function PublicQuizPlayPage() {
               </span>
             </div>
             <div className="text-right pl-4 border-l border-slate-200">
-              <span className="text-[10px] uppercase font-bold text-slate-400 block">Timer</span>
-              <span className="text-sm font-bold font-mono text-slate-900">{elapsedSeconds}s</span>
+              <span className="text-[10px] uppercase font-bold text-slate-400 block">Question Time</span>
+              <span className="text-sm font-bold font-mono text-slate-900">{questionElapsed}s</span>
             </div>
           </div>
         </div>
@@ -257,7 +400,7 @@ export default function PublicQuizPlayPage() {
           {/* Reference display if provided */}
           {currentQuestion.explanation && (
             <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-500 italic">
-              Scripture Context: {currentQuestion.explanation}
+              Scripture Reference: {currentQuestion.explanation}
             </div>
           )}
 
@@ -314,7 +457,7 @@ export default function PublicQuizPlayPage() {
             {publicInfo ? publicInfo.title : "Join Bible Quiz"}
           </h1>
           <p className="text-xs text-slate-500">
-            Enter your display name to start the quiz. Your results will be saved to the leaderboard.
+            Enter your display name to start the quiz. Scores are determined by both response speed and answer accuracy!
           </p>
         </div>
 
@@ -353,12 +496,16 @@ export default function PublicQuizPlayPage() {
             />
           </div>
 
+          <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-[11px] text-slate-500 leading-relaxed">
+            🛡️ <strong>Anti-Cheat Enabled:</strong> The quiz runs in fullscreen. Tab switching or background application focus will trigger a warning. 3 warnings will disqualify the attempt.
+          </div>
+
           <button
             type="submit"
             disabled={isJoining}
             className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-sm shadow-md transition disabled:opacity-50"
           >
-            {isJoining ? "Connecting..." : "Start Quiz Now →"}
+            {isJoining ? "Entering Quiz..." : "Enter Quiz in Fullscreen →"}
           </button>
         </form>
       </div>

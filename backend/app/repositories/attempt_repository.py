@@ -13,8 +13,9 @@ class AttemptRepository:
         """Create a participant quiz attempt."""
         sql = (
             "INSERT INTO quiz_attempts (id, quiz_id, participant_name, score, max_score, "
-            "correct_count, incorrect_count, completion_status, started_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);"
+            "correct_count, incorrect_count, completion_status, started_at, total_time_seconds, "
+            "avg_time_seconds, warning_count) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0.0, 0);"
         )
         params = [
             data["id"],
@@ -35,7 +36,8 @@ class AttemptRepository:
         """Fetch attempt details by UUID."""
         sql = (
             "SELECT id, quiz_id, participant_name, score, max_score, "
-            "correct_count, incorrect_count, completion_status, started_at, completed_at, duration_seconds "
+            "correct_count, incorrect_count, completion_status, started_at, completed_at, "
+            "duration_seconds, total_time_seconds, avg_time_seconds, warning_count "
             "FROM quiz_attempts WHERE id = ? LIMIT 1;"
         )
         results = await d1_client.execute(sql, [str(attempt_id)])
@@ -43,10 +45,10 @@ class AttemptRepository:
 
     @staticmethod
     async def record_answer(answer_data: dict[str, Any]) -> dict[str, Any]:
-        """Insert or replace submitted answer for attempt."""
+        """Insert or replace submitted answer for attempt including response time."""
         sql = (
             "INSERT INTO attempt_answers (id, attempt_id, question_id, selected_answer, "
-            "is_correct, points_awarded, answered_at) VALUES (?, ?, ?, ?, ?, ?, ?);"
+            "is_correct, points_awarded, response_time_seconds, answered_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?);"
         )
         params = [
             answer_data["id"],
@@ -55,6 +57,7 @@ class AttemptRepository:
             answer_data["selected_answer"],
             1 if answer_data.get("is_correct") else 0,
             answer_data.get("points_awarded", 0),
+            answer_data.get("response_time_seconds", 0.0),
             answer_data["answered_at"],
         ]
         await d1_client.execute(sql, params)
@@ -67,13 +70,17 @@ class AttemptRepository:
         max_score: int,
         correct_count: int,
         incorrect_count: int,
-        duration_seconds: int,
+        total_time_seconds: int,
+        avg_time_seconds: float,
+        warning_count: int,
+        completion_status: str,
         completed_at: str,
     ) -> bool:
-        """Update and finalize participant attempt with score and duration."""
+        """Update and finalize participant attempt with speed/accuracy scores and anti-cheat warnings."""
         sql = (
             "UPDATE quiz_attempts SET score = ?, max_score = ?, correct_count = ?, "
-            "incorrect_count = ?, duration_seconds = ?, completion_status = 'completed', "
+            "incorrect_count = ?, duration_seconds = ?, total_time_seconds = ?, "
+            "avg_time_seconds = ?, warning_count = ?, completion_status = ?, "
             "completed_at = ? WHERE id = ?;"
         )
         params = [
@@ -81,7 +88,11 @@ class AttemptRepository:
             max_score,
             correct_count,
             incorrect_count,
-            duration_seconds,
+            total_time_seconds,
+            total_time_seconds,
+            avg_time_seconds,
+            warning_count,
+            completion_status,
             completed_at,
             str(attempt_id),
         ]
