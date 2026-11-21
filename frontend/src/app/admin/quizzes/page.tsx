@@ -59,7 +59,9 @@ export default function QuizzesPage() {
       // Redirect immediately to /admin/quizzes/create?quizId=... to add questions & configure
       router.push(`/admin/quizzes/create?quizId=${newQuiz.id}`);
     } catch (err: unknown) {
+      console.error("Quiz creation error:", err);
       setError(err instanceof Error ? err.message : "Failed to create quiz");
+    } finally {
       setIsSubmitting(false);
     }
   };
@@ -175,13 +177,13 @@ export default function QuizzesPage() {
                 <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-xs">
                   <Link
                     href={`/admin/quizzes/create?quizId=${quiz.id}`}
-                    className="font-semibold text-indigo-600 hover:text-indigo-800"
+                    className="font-semibold text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100 transition-colors"
                   >
                     Edit Questions ✎
                   </Link>
                   <Link
                     href={`/admin/dashboard?quizId=${quiz.id}`}
-                    className="font-semibold text-slate-500 hover:text-slate-800"
+                    className="font-semibold text-slate-600 hover:text-slate-900 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 transition-colors"
                   >
                     Leaderboard →
                   </Link>

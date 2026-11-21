@@ -1,14 +1,35 @@
 "use client";
 
-import React from "react";
+import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAuth } from "./AuthContext";
 
 export const Header: React.FC = () => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const router = useRouter();
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const isSuperAdmin = user?.role === "SUPER_ADMIN";
   const isAdmin = user?.role === "ADMIN";
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleLogout = async () => {
+    setDropdownOpen(false);
+    await logout();
+    router.replace("/admin/login");
+  };
 
   return (
     <header className="border-b border-slate-200 bg-white/80 backdrop-blur-md sticky top-0 z-50">
@@ -41,21 +62,88 @@ export const Header: React.FC = () => {
             </Link>
           )}
 
-          {/* Role Pill Display */}
-          {isSuperAdmin ? (
-            <Link
-              href="/admin/superadmin"
-              className="text-xs sm:text-sm font-bold px-3.5 py-1.5 rounded-lg border bg-amber-500 text-white border-amber-600 shadow-sm shadow-amber-200 hover:bg-amber-600 transition-all flex items-center gap-1.5"
-            >
-              <span>⚡</span> Super Admin Panel
-            </Link>
-          ) : isAdmin ? (
-            <Link
-              href="/admin/dashboard"
-              className="text-xs sm:text-sm font-semibold px-3.5 py-1.5 rounded-lg border bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100 transition-colors"
-            >
-              Admin Panel
-            </Link>
+          {/* Role Dropdown when authenticated */}
+          {user ? (
+            <div className="relative" ref={dropdownRef}>
+              <button
+                type="button"
+                onClick={() => setDropdownOpen((prev) => !prev)}
+                className={`text-xs sm:text-sm font-bold px-3.5 py-1.5 rounded-lg border transition-all flex items-center gap-1.5 cursor-pointer shadow-sm ${
+                  isSuperAdmin
+                    ? "bg-amber-500 text-white border-amber-600 hover:bg-amber-600 shadow-amber-200"
+                    : "bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100"
+                }`}
+              >
+                <span>{isSuperAdmin ? "⚡ Super Admin" : "🛡️ Admin"}</span>
+                <svg
+                  className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                    dropdownOpen ? "rotate-180" : ""
+                  }`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {/* Dropdown Menu */}
+              {dropdownOpen && (
+                <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 z-50 animate-in fade-in slide-in-from-top-1 duration-150">
+                  <div className="px-4 py-2 border-b border-slate-100">
+                    <p className="text-xs font-medium text-slate-400">Signed in as</p>
+                    <p className="text-xs font-bold text-slate-800 truncate">{user.name || user.email}</p>
+                    <span
+                      className={`inline-block mt-1 px-2 py-0.5 text-[10px] font-bold rounded-md uppercase tracking-wider ${
+                        isSuperAdmin
+                          ? "bg-amber-100 text-amber-800 border border-amber-200"
+                          : "bg-indigo-50 text-indigo-700 border border-indigo-100"
+                      }`}
+                    >
+                      {user.role}
+                    </span>
+                  </div>
+
+                  <div className="py-1">
+                    <Link
+                      href="/admin/dashboard"
+                      onClick={() => setDropdownOpen(false)}
+                      className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-indigo-600 transition-colors"
+                    >
+                      <span>📊</span> Admin Dashboard
+                    </Link>
+
+                    <Link
+                      href="/admin/quizzes"
+                      onClick={() => setDropdownOpen(false)}
+                      className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-indigo-600 transition-colors"
+                    >
+                      <span>📝</span> Manage Quizzes
+                    </Link>
+
+                    {isSuperAdmin && (
+                      <Link
+                        href="/admin/superadmin"
+                        onClick={() => setDropdownOpen(false)}
+                        className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-amber-700 hover:bg-amber-50 transition-colors"
+                      >
+                        <span>⚡</span> SuperAdmin Console
+                      </Link>
+                    )}
+                  </div>
+
+                  <div className="border-t border-slate-100 pt-1">
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="w-full text-left flex items-center gap-2 px-4 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 transition-colors"
+                    >
+                      <span>🚪</span> Sign Out
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           ) : (
             <Link
               href="/admin/login"

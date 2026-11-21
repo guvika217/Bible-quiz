@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 // Define route prefixes requiring an authenticated session
-const PROTECTED_PREFIXES = ["/admin/dashboard", "/admin/superadmin"];
+const PROTECTED_PREFIXES = ["/admin/dashboard", "/admin/superadmin", "/admin/quizzes"];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
