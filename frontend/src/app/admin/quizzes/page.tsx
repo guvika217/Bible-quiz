@@ -44,7 +44,8 @@ export default function QuizzesPage() {
   // Step 1: Create Quiz with name -> auto-generates ID & join code -> redirects to Quiz Question Builder
   const handleQuickCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!quizName.trim()) {
+    const title = quizName.trim();
+    if (!title) {
       setError("Please enter a name for the quiz.");
       return;
     }
@@ -54,16 +55,16 @@ export default function QuizzesPage() {
 
     try {
       const newQuiz = await quizService.createQuiz({
-        title: quizName.trim(),
+        title,
         time_limit_seconds: 30, // Default 30s per question
       });
 
-      // Redirect immediately to /admin/quizzes/create?quizId=... to add questions & configure
+      // Clear input and immediately route to creator for the new quiz
+      setQuizName("");
       router.push(`/admin/quizzes/create?quizId=${newQuiz.id}`);
     } catch (err: unknown) {
       console.error("Quiz creation error:", err);
       setError(err instanceof Error ? err.message : "Failed to create quiz");
-    } finally {
       setIsSubmitting(false);
     }
   };

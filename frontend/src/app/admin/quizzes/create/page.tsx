@@ -38,6 +38,7 @@ export default function CreateQuizPage() {
     }
 
     let isMounted = true;
+
     authService
       .getCurrentUser()
       .then(() => Promise.all([quizService.getQuiz(quizId), quizService.getAdminQuestions(quizId)]))
