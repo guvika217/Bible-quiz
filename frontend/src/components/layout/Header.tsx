@@ -59,15 +59,6 @@ export const Header: React.FC = () => {
               Admin Login
             </Link>
           )}
-
-          <a
-            href="http://localhost:8000/docs"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs sm:text-sm font-medium text-slate-500 hover:text-indigo-600 transition-colors hidden sm:inline"
-          >
-            API Docs ↗
-          </a>
         </nav>
       </div>
     </header>
