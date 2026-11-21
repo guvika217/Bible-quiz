@@ -2,12 +2,13 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "./AuthContext";
 
 export const Header: React.FC = () => {
   const { user, logout } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -17,6 +18,7 @@ export const Header: React.FC = () => {
 
   const isSuperAdmin = user?.role === "SUPER_ADMIN";
   const isAdmin = user?.role === "ADMIN";
+  const isQuizPage = pathname === "/quiz" || pathname.startsWith("/quiz/");
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -53,16 +55,18 @@ export const Header: React.FC = () => {
         </Link>
 
         <nav className="flex items-center gap-4 sm:gap-6">
-          {/* Public Leaderboard Shortcut */}
-          <Link
-            href="/leaderboard"
-            className="text-xs sm:text-sm font-semibold text-slate-600 hover:text-indigo-600 transition-colors flex items-center gap-1"
-          >
-            <span>🏆</span> Leaderboard
-          </Link>
+          {/* Public Leaderboard Shortcut - hidden on quiz gameplay */}
+          {!isQuizPage && (
+            <Link
+              href="/leaderboard"
+              className="text-xs sm:text-sm font-semibold text-slate-600 hover:text-indigo-600 transition-colors flex items-center gap-1"
+            >
+              <span>🏆</span> Leaderboard
+            </Link>
+          )}
 
-          {/* Quizzes shortcut for logged-in users */}
-          {(isAdmin || isSuperAdmin) && (
+          {/* Quizzes shortcut for logged-in users - hidden on quiz gameplay */}
+          {!isQuizPage && (isAdmin || isSuperAdmin) && (
             <Link
               href="/admin/quizzes"
               className="text-xs sm:text-sm font-semibold text-slate-600 hover:text-indigo-600 transition-colors"
@@ -71,8 +75,15 @@ export const Header: React.FC = () => {
             </Link>
           )}
 
-          {/* Authenticated Area: Role Dropdown + Quick Animated Sign Out Button */}
-          {user ? (
+          {/* On Quiz Page: Clean focused participant mode without admin login/controls */}
+          {isQuizPage ? (
+            <div className="flex items-center gap-2">
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200 flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                Live Quiz Session
+              </span>
+            </div>
+          ) : user ? (
             <div className="flex items-center gap-2 sm:gap-3">
               {/* Role Dropdown */}
               <div className="relative" ref={dropdownRef}>
