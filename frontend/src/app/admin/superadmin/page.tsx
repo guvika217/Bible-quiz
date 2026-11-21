@@ -91,6 +91,14 @@ export default function SuperAdminDashboardPage() {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      await authService.logout();
+    } finally {
+      router.replace("/admin/login");
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3">
@@ -128,30 +136,30 @@ export default function SuperAdminDashboardPage() {
         <div>
           <div className="inline-flex items-center gap-2 mb-1">
             <span className="px-3 py-0.5 text-xs font-black rounded-full bg-amber-100 text-amber-900 border border-amber-300 tracking-wide uppercase">
-              ⚡ SuperAdmin Control Center
+              ⚡ Role: SUPER_ADMIN
             </span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900">
-            Platform Governance & RBAC
+            Super Admin Control Center
           </h1>
           <p className="text-xs text-slate-500 mt-1">
-            Logged in as <span className="font-semibold text-slate-800">{currentUser?.name}</span> ({currentUser?.email})
+            Active Administrator: <span className="font-semibold text-slate-800">{currentUser?.name}</span> ({currentUser?.email})
           </p>
         </div>
 
         <div className="flex items-center gap-3">
           <Link
-            href="/admin/dashboard"
-            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition"
-          >
-            ← Admin Dashboard
-          </Link>
-          <Link
             href="/admin/quizzes"
             className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl transition shadow-sm"
           >
-            Quizzes
+            Manage Quizzes
           </Link>
+          <button
+            onClick={handleLogout}
+            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition"
+          >
+            Sign Out
+          </button>
         </div>
       </div>
 
