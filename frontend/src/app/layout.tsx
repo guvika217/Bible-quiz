@@ -8,10 +8,10 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Bible Quiz Platform | Enterprise Biblical Knowledge Engine",
+  title: "Bible Quiz Platform | Interactive Biblical Knowledge Engine",
   description:
-    "Production-grade, highly scalable Bible quiz and trivia application built with Next.js, Python FastAPI, and modern cloud infrastructure.",
-  keywords: ["Bible Quiz", "Scripture Trivia", "Enterprise Architecture", "FastAPI", "Next.js"],
+    "Production-grade, highly scalable Bible quiz and trivia application with live leaderboards, quiz management, and performance analytics.",
+  keywords: ["Bible Quiz", "Scripture Trivia", "Christian Quiz", "Leaderboards", "FastAPI", "Next.js"],
   authors: [{ name: "Bible Quiz Platform Team" }],
 };
 

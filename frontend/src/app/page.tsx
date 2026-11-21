@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
 import { healthService } from "@/services/healthService";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import type { HealthCheckResponse } from "@/types/api";
@@ -38,28 +39,44 @@ export default function HomePage() {
       <div className="text-center max-w-3xl mx-auto">
         <div className="inline-flex items-center gap-2 mb-6">
           <span className="px-3 py-1 text-xs font-semibold rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
-            Phase 1 Foundation Setup
+            Scripture Trivia & Live Competitions
           </span>
         </div>
         <h1 className="text-4xl sm:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight">
-          Enterprise-Grade <br />
+          Interactive <br />
           <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-violet-600">
             Bible Quiz Platform
           </span>
         </h1>
         <p className="mt-4 text-lg text-slate-600 leading-relaxed">
-          Robust, decoupled full-stack architecture built for high concurrency, deep
-          scriptural categorization, live real-time competition, and future Cloudflare D1
-          data storage.
+          Test and grow your scriptural knowledge with timed rounds, live leaderboards,
+          and deep player performance analytics across Old and New Testament studies.
         </p>
+
+        <div className="mt-8 flex justify-center gap-4">
+          <Link
+            href="/admin/login"
+            className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl shadow-md transition"
+          >
+            Admin Portal & Leaderboards
+          </Link>
+          <a
+            href="http://localhost:8000/docs"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-6 py-3 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold rounded-xl transition"
+          >
+            Explore API Docs
+          </a>
+        </div>
       </div>
 
       {/* Backend Connection Live Card */}
-      <div className="mt-12 max-w-2xl mx-auto bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8">
+      <div className="mt-14 max-w-2xl mx-auto bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8">
         <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-6">
           <div>
-            <h2 className="text-base font-semibold text-slate-900">Backend API Connectivity</h2>
-            <p className="text-xs text-slate-500">Target: FastAPI Service (/api/v1/health)</p>
+            <h2 className="text-base font-semibold text-slate-900">System API Connectivity</h2>
+            <p className="text-xs text-slate-500">Service: FastAPI & Cloudflare D1</p>
           </div>
           <div>
             {isLoading ? (
@@ -93,46 +110,10 @@ export default function HomePage() {
           </div>
         ) : (
           <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-sm">
-            <p className="font-semibold">Backend Offline or Blocked by CORS:</p>
+            <p className="font-semibold">Backend Offline or Blocked:</p>
             <p className="text-xs mt-1 text-rose-700">{error}</p>
-            <p className="text-xs mt-2 text-slate-600">
-              Ensure the FastAPI backend is running on <code>http://localhost:8000</code>.
-            </p>
           </div>
         )}
-      </div>
-
-      {/* Architecture Foundations List */}
-      <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8">
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-          <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold mb-4">
-            ⚡
-          </div>
-          <h3 className="font-semibold text-slate-900 text-base">Next.js App Router</h3>
-          <p className="text-sm text-slate-600 mt-2">
-            Structured with clean domain boundaries, unified API client abstraction, and TypeScript type safety.
-          </p>
-        </div>
-
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-          <div className="w-10 h-10 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center font-bold mb-4">
-            🚀
-          </div>
-          <h3 className="font-semibold text-slate-900 text-base">FastAPI Architecture</h3>
-          <p className="text-sm text-slate-600 mt-2">
-            Layered repository-service design with structured logging, centralized exceptions, and automated OpenAPI specs.
-          </p>
-        </div>
-
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-          <div className="w-10 h-10 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center font-bold mb-4">
-            ☁️
-          </div>
-          <h3 className="font-semibold text-slate-900 text-base">Cloudflare D1 Prepared</h3>
-          <p className="text-sm text-slate-600 mt-2">
-            Engineered for edge deployment and Cloudflare D1 distributed database access via HTTP APIs or Worker bridges.
-          </p>
-        </div>
       </div>
     </div>
   );

@@ -10,11 +10,17 @@ export const Header: React.FC = () => {
             ✝
           </div>
           <span className="font-bold text-xl text-slate-900 tracking-tight">
-            BibleQuiz<span className="text-indigo-600">.Enterprise</span>
+            BibleQuiz<span className="text-indigo-600">.Platform</span>
           </span>
         </Link>
 
         <nav className="flex items-center gap-6">
+          <Link
+            href="/admin/quizzes"
+            className="text-sm font-semibold text-slate-700 hover:text-indigo-600 transition-colors"
+          >
+            Quizzes
+          </Link>
           <Link
             href="/admin/login"
             className="text-sm font-semibold text-indigo-600 hover:text-indigo-700 bg-indigo-50 px-3.5 py-1.5 rounded-lg border border-indigo-100 transition-colors"
