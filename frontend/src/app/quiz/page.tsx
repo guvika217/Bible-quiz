@@ -4,6 +4,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { quizService } from "@/services/quizService";
+import { ScratchRevealCard } from "@/components/quiz/ScratchRevealCard";
 import type {
   AttemptResult,
   ParticipantAttemptSession,
@@ -270,19 +271,33 @@ export default function PublicQuizPlayPage() {
             <p className="text-xs text-slate-500 mt-1">
               {isDisq
                 ? "You exceeded the 3 security warning limit due to tab switching or window blur."
-                : "Your responses have been recorded securely. Results will be displayed soon!"}
+                : "Your responses have been recorded. Scratch the card below to pop celebration & reveal your certified score!"}
             </p>
           </div>
 
-          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 text-center space-y-2">
-            <span className="text-2xl">⏳</span>
-            <h3 className="text-sm font-bold text-amber-900">
-              Results will be displayed soon
-            </h3>
-            <p className="text-xs text-amber-700 max-w-md mx-auto leading-relaxed">
-              The quiz evaluation is in progress. The official rankings and scores will be announced shortly by the organizers.
-            </p>
-          </div>
+          {!isDisq ? (
+            /* Interactive Scratch Card with Celebration Confetti Blast */
+            <div className="py-2">
+              <ScratchRevealCard
+                score={result.score}
+                maxScore={result.max_score}
+                accuracy={
+                  result.max_score > 0
+                    ? Math.round((result.score / result.max_score) * 100)
+                    : 0
+                }
+                totalTime={result.duration_seconds}
+              />
+            </div>
+          ) : (
+            <div className="bg-rose-50 border border-rose-200 rounded-2xl p-6 text-center space-y-2">
+              <span className="text-2xl">🚫</span>
+              <h3 className="text-sm font-bold text-rose-900">Attempt Disqualified</h3>
+              <p className="text-xs text-rose-700 max-w-md mx-auto leading-relaxed">
+                This attempt recorded 3 security violations and was not graded.
+              </p>
+            </div>
+          )}
 
           <div className="pt-4 border-t border-slate-100 flex justify-center">
             <Link

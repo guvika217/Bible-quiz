@@ -9,7 +9,7 @@ from app.core.dependencies import get_current_user
 from app.schemas.attempt import AttemptJoin, AttemptResultResponse
 from app.schemas.leaderboard import QuizPerformanceAnalytics
 from app.schemas.question import AdminQuestionResponse, QuestionCreate
-from app.schemas.quiz import QuizCreate, QuizResponse
+from app.schemas.quiz import QuizCreate, QuizResponse, QuizUpdate
 from app.schemas.submission import AttemptSubmission
 from app.schemas.user import UserResponse
 from app.services.quiz_service import QuizService
@@ -50,6 +50,35 @@ async def create_quiz(
 )
 async def get_quiz(quiz_id: UUID) -> QuizResponse:
     return await QuizService.get_quiz(quiz_id)
+
+
+@router.put(
+    "/{quiz_id}",
+    response_model=QuizResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Update Quiz",
+    description="Update quiz title, description, time limit, or lifecycle status (draft, active, completed, archived).",
+)
+async def update_quiz(
+    quiz_id: UUID,
+    quiz_up: QuizUpdate,
+    _: UserResponse = Depends(get_current_user),
+) -> QuizResponse:
+    return await QuizService.update_quiz(quiz_id, quiz_up)
+
+
+@router.delete(
+    "/{quiz_id}",
+    status_code=status.HTTP_200_OK,
+    summary="Delete Quiz",
+    description="Permanently delete a quiz and all its associated questions and attempts.",
+)
+async def delete_quiz(
+    quiz_id: UUID,
+    _: UserResponse = Depends(get_current_user),
+) -> dict[str, str]:
+    await QuizService.delete_quiz(quiz_id)
+    return {"message": "Quiz deleted successfully"}
 
 
 # --- QUESTIONS MANAGEMENT FOR QUIZ CREATOR ---

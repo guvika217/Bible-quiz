@@ -20,7 +20,7 @@ from app.schemas.question import (
     ParticipantQuestionResponse,
     QuestionCreate,
 )
-from app.schemas.quiz import QuizCreate, QuizResponse
+from app.schemas.quiz import QuizCreate, QuizResponse, QuizUpdate
 from app.schemas.submission import AttemptSubmission
 
 
@@ -127,6 +127,69 @@ class QuizService:
             created_at=now,
             updated_at=now,
         )
+
+    @staticmethod
+    async def update_quiz(quiz_id: UUID, quiz_up: QuizUpdate) -> QuizResponse:
+        quiz = await QuizRepository.get_by_id(str(quiz_id))
+        if not quiz:
+            raise AppException("Quiz not found", status_code=404)
+
+        now = datetime.now(UTC).isoformat()
+        updates: dict[str, Any] = {"updated_at": now}
+
+        if quiz_up.title is not None:
+            trimmed = quiz_up.title.strip()
+            existing = await QuizRepository.get_by_title(trimmed)
+            if existing and existing["id"] != str(quiz_id):
+                raise AppException(f"A quiz with the name '{trimmed}' already exists.", status_code=400)
+            updates["title"] = trimmed
+
+        if quiz_up.description is not None:
+            updates["description"] = quiz_up.description.strip()
+
+        if quiz_up.status is not None:
+            updates["status"] = quiz_up.status.value
+
+        if quiz_up.time_limit_seconds is not None:
+            updates["time_limit_seconds"] = quiz_up.time_limit_seconds
+
+        if quiz_up.settings is not None:
+            updates["settings"] = json.dumps(quiz_up.settings)
+
+        updated_record = await QuizRepository.update_quiz(str(quiz_id), updates)
+        if not updated_record:
+            raise AppException("Failed to update quiz", status_code=500)
+
+        settings_dict = {}
+        if updated_record.get("settings"):
+            if isinstance(updated_record["settings"], str):
+                try:
+                    settings_dict = json.loads(updated_record["settings"])
+                except (json.JSONDecodeError, TypeError):
+                    settings_dict = {}
+            elif isinstance(updated_record["settings"], dict):
+                settings_dict = updated_record["settings"]
+
+        return QuizResponse(
+            id=UUID(updated_record["id"]),
+            owner_id=UUID(updated_record["owner_id"]),
+            title=updated_record["title"],
+            description=updated_record.get("description"),
+            join_code=updated_record["join_code"],
+            status=updated_record["status"],
+            question_count=updated_record.get("question_count", 0),
+            time_limit_seconds=updated_record.get("time_limit_seconds"),
+            settings=settings_dict,
+            created_at=updated_record["created_at"],
+            updated_at=updated_record["updated_at"],
+        )
+
+    @staticmethod
+    async def delete_quiz(quiz_id: UUID) -> bool:
+        quiz = await QuizRepository.get_by_id(str(quiz_id))
+        if not quiz:
+            raise AppException("Quiz not found", status_code=404)
+        return await QuizRepository.delete_quiz(str(quiz_id))
 
     # --- QUESTION MANAGEMENT ---
 

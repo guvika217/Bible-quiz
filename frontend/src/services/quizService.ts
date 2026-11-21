@@ -33,6 +33,25 @@ export const quizService = {
   },
 
   /**
+   * Update quiz (title, description, status, time limit)
+   */
+  updateQuiz: (quizId: string, updates: Partial<{ title: string; description: string; status: string; time_limit_seconds: number }>): Promise<Quiz> => {
+    return apiClient.request<Quiz>(`/quizzes/${quizId}`, {
+      method: "PUT",
+      body: JSON.stringify(updates),
+    });
+  },
+
+  /**
+   * Delete quiz permanently
+   */
+  deleteQuiz: (quizId: string): Promise<{ message: string }> => {
+    return apiClient.request<{ message: string }>(`/quizzes/${quizId}`, {
+      method: "DELETE",
+    });
+  },
+
+  /**
    * Get admin questions list
    */
   getAdminQuestions: (quizId: string): Promise<AdminQuestion[]> => {

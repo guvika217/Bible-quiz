@@ -76,6 +76,32 @@ class QuizRepository:
         return quiz_data
 
     @staticmethod
+    async def update_quiz(quiz_id: str, updates: dict[str, Any]) -> dict[str, Any] | None:
+        """Update an existing quiz fields in Cloudflare D1."""
+        if not updates:
+            return await QuizRepository.get_by_id(quiz_id)
+
+        set_clauses = []
+        params = []
+        for key, value in updates.items():
+            set_clauses.append(f"{key} = ?")
+            params.append(value)
+
+        params.append(str(quiz_id))
+        sql = f"UPDATE quizzes SET {', '.join(set_clauses)} WHERE id = ?;"
+        await d1_client.execute(sql, params)
+        return await QuizRepository.get_by_id(quiz_id)
+
+    @staticmethod
+    async def delete_quiz(quiz_id: str) -> bool:
+        """Delete a quiz and its questions & attempts from Cloudflare D1."""
+        await d1_client.execute("DELETE FROM attempt_answers WHERE attempt_id IN (SELECT id FROM quiz_attempts WHERE quiz_id = ?);", [str(quiz_id)])
+        await d1_client.execute("DELETE FROM quiz_attempts WHERE quiz_id = ?;", [str(quiz_id)])
+        await d1_client.execute("DELETE FROM questions WHERE quiz_id = ?;", [str(quiz_id)])
+        await d1_client.execute("DELETE FROM quizzes WHERE id = ?;", [str(quiz_id)])
+        return True
+
+    @staticmethod
     async def get_quiz_leaderboard(quiz_id: str, limit: int = 100) -> list[dict[str, Any]]:
         """Fetch ranked leaderboard for a quiz sorted by highest score, then fastest duration."""
         sql = (
