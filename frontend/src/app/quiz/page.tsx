@@ -101,15 +101,23 @@ export default function PublicQuizPlayPage() {
     }
   }, [session, selectedAnswers, questionResponseTimes, elapsedSeconds]);
 
-  // Anti-Cheat: Visibility Change & Window Blur Detection (Tab Switching / AI apps)
+  // Anti-Cheat: Visibility Change, Window Blur, and Fullscreen Exit Detection
   useEffect(() => {
     if (!session || result || isDisqualified) return;
 
+    let debounceTimer: NodeJS.Timeout | null = null;
+
     const handleCheatViolation = (reason: string) => {
+      // Debounce slightly (500ms) to prevent multiple triggers from one event
+      if (debounceTimer) return;
+      debounceTimer = setTimeout(() => {
+        debounceTimer = null;
+      }, 700);
+
       setWarningCount((prev) => {
         const nextCount = prev + 1;
         setWarningMessage(
-          `Security Warning #${nextCount} of 3: ${reason}. Tab switching, window minimization, or background application switching is strictly forbidden.`
+          `Security Warning #${nextCount} of 3: ${reason}. Tab switching, window blur, or exiting fullscreen is strictly prohibited.`
         );
         setShowWarningModal(true);
 
@@ -130,12 +138,21 @@ export default function PublicQuizPlayPage() {
       handleCheatViolation("The quiz window lost focus");
     };
 
+    const handleFullscreenChange = () => {
+      if (!document.fullscreenElement) {
+        handleCheatViolation("You exited fullscreen mode");
+      }
+    };
+
     document.addEventListener("visibilitychange", handleVisibilityChange);
     window.addEventListener("blur", handleWindowBlur);
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
 
     return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("blur", handleWindowBlur);
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
     };
   }, [session, result, isDisqualified, triggerDisqualification]);
 
@@ -338,11 +355,18 @@ export default function PublicQuizPlayPage() {
           </div>
 
           <div className="flex items-center gap-4">
-            {warningCount > 0 && (
-              <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
-                ⚠️ {warningCount}/3 Warnings
+            <span
+              className={`px-3 py-1 rounded-full text-xs font-bold border flex items-center gap-1.5 transition-all ${
+                warningCount > 0
+                  ? "bg-rose-100 text-rose-800 border-rose-300 animate-pulse"
+                  : "bg-emerald-50 text-emerald-700 border-emerald-200"
+              }`}
+            >
+              <span>{warningCount > 0 ? "⚠️" : "🛡️"}</span>
+              <span>
+                {warningCount > 0 ? `${warningCount}/3 Security Warnings` : "0/3 Warnings (Clean)"}
               </span>
-            )}
+            </span>
             <div className="text-right">
               <span className="text-[10px] uppercase font-bold text-slate-400 block">Question</span>
               <span className="text-sm font-bold text-indigo-600">
