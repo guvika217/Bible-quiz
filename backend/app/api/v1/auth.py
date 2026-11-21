@@ -1,9 +1,9 @@
-"""Authentication API routes."""
+"""Authentication API routes with RBAC verification."""
 
 from fastapi import APIRouter, Depends, Response, status
 
 from app.core.config import settings
-from app.core.dependencies import get_current_admin
+from app.core.dependencies import get_current_user, require_super_admin
 from app.schemas.user import UserLogin, UserResponse
 from app.services.auth_service import AuthService
 
@@ -15,7 +15,7 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
     response_model=UserResponse,
     status_code=status.HTTP_200_OK,
     summary="Admin Login",
-    description="Authenticates admin credentials, sets an HttpOnly session cookie, and returns safe user data.",
+    description="Authenticates credentials, sets an HttpOnly JWT session cookie, and returns user data with role.",
 )
 async def login(credentials: UserLogin, response: Response) -> UserResponse:
     result = await AuthService.authenticate_admin(
@@ -26,7 +26,7 @@ async def login(credentials: UserLogin, response: Response) -> UserResponse:
     token = result["token"]
     user: UserResponse = result["user"]
 
-    # Set secure HttpOnly cookie
+    # Set secure HttpOnly cookie with JWT
     response.set_cookie(
         key=settings.AUTH_COOKIE_NAME,
         value=token,
@@ -61,8 +61,24 @@ async def logout(response: Response) -> dict[str, str]:
     "/me",
     response_model=UserResponse,
     status_code=status.HTTP_200_OK,
-    summary="Get Current Authenticated Admin",
-    description="Validates the active session and returns the current admin's profile.",
+    summary="Get Current Authenticated User",
+    description="Validates the active session and returns user profile with RBAC role.",
 )
-async def get_current_user(admin: UserResponse = Depends(get_current_admin)) -> UserResponse:
+async def me(admin: UserResponse = Depends(get_current_user)) -> UserResponse:
     return admin
+
+
+@router.get(
+    "/superadmin-only",
+    response_model=dict[str, str],
+    status_code=status.HTTP_200_OK,
+    summary="SUPER_ADMIN Only Protected Resource",
+    description="Demonstrates role-based access control blocking standard ADMIN role.",
+)
+async def superadmin_test(
+    super_admin: UserResponse = Depends(require_super_admin),
+) -> dict[str, str]:
+    return {
+        "message": f"Welcome, Super Administrator {super_admin.name}. You have unrestricted access.",
+        "role": super_admin.role,
+    }

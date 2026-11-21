@@ -1,9 +1,25 @@
-"""User Pydantic schemas."""
+"""User Pydantic schemas with RBAC support."""
 
 from datetime import datetime
+from enum import Enum
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
+
+
+class UserRole(str, Enum):
+    """User authorization roles."""
+
+    SUPER_ADMIN = "SUPER_ADMIN"
+    ADMIN = "ADMIN"
+
+
+class AccountStatus(str, Enum):
+    """User account lifecycle status."""
+
+    ACTIVE = "ACTIVE"
+    INACTIVE = "INACTIVE"
+    SUSPENDED = "SUSPENDED"
 
 
 class UserBase(BaseModel):
@@ -14,13 +30,14 @@ class UserBase(BaseModel):
 
 
 class UserCreate(UserBase):
-    """Schema for registering or creating a new admin user."""
+    """Schema for creating a new admin user."""
 
     password: str = Field(
         min_length=8,
         max_length=128,
         description="Plaintext password to be hashed by the backend",
     )
+    role: UserRole = Field(default=UserRole.ADMIN, description="Assigned role")
 
 
 class UserLogin(BaseModel):
@@ -35,6 +52,8 @@ class UserUpdate(BaseModel):
 
     name: str | None = Field(default=None, min_length=1, max_length=100)
     email: EmailStr | None = Field(default=None)
+    role: UserRole | None = Field(default=None)
+    account_status: AccountStatus | None = Field(default=None)
     password: str | None = Field(
         default=None,
         min_length=8,
@@ -49,5 +68,9 @@ class UserResponse(UserBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID = Field(description="Unique user UUID")
+    role: UserRole = Field(description="User access role")
+    email_verified: bool = Field(default=False, description="Whether email is verified")
+    account_status: AccountStatus = Field(description="Account status")
+    verified_at: datetime | None = Field(default=None, description="Verification timestamp")
     created_at: datetime = Field(description="Creation timestamp in UTC")
     updated_at: datetime = Field(description="Last update timestamp in UTC")

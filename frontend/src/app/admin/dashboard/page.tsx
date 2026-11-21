@@ -1,11 +1,12 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { authService } from "@/services/authService";
 import type { User } from "@/types/auth";
 
-export default function AdminDashboardPlaceholder() {
+export default function AdminDashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -22,7 +23,6 @@ export default function AdminDashboardPlaceholder() {
         }
       })
       .catch(() => {
-        // Unauthenticated access -> Redirect to Login
         if (isMounted) {
           router.replace("/admin/login");
         }
@@ -38,7 +38,7 @@ export default function AdminDashboardPlaceholder() {
     try {
       await authService.logout();
     } catch {
-      // Continue cleanup on client
+      // client-side redirect fallback
     } finally {
       router.replace("/admin/login");
     }
@@ -60,7 +60,16 @@ export default function AdminDashboardPlaceholder() {
           <div>
             <div className="inline-flex items-center gap-2 mb-2">
               <span className="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-800">
-                Authenticated Session Active
+                JWT Session Active
+              </span>
+              <span
+                className={`px-2.5 py-0.5 text-xs font-bold rounded-full ${
+                  user?.role === "SUPER_ADMIN"
+                    ? "bg-amber-100 text-amber-900 border border-amber-200"
+                    : "bg-blue-100 text-blue-800 border border-blue-200"
+                }`}
+              >
+                Role: {user?.role}
               </span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">
@@ -71,21 +80,37 @@ export default function AdminDashboardPlaceholder() {
             </p>
           </div>
 
-          <button
-            onClick={handleLogout}
-            disabled={isLoggingOut}
-            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-xl transition-colors disabled:opacity-50"
-          >
-            {isLoggingOut ? "Signing Out..." : "Sign Out"}
-          </button>
+          <div className="flex items-center gap-3">
+            {user?.role === "SUPER_ADMIN" && (
+              <Link
+                href="/admin/superadmin"
+                className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm"
+              >
+                SuperAdmin Console ↗
+              </Link>
+            )}
+            <button
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-xl transition-colors disabled:opacity-50"
+            >
+              {isLoggingOut ? "Signing Out..." : "Sign Out"}
+            </button>
+          </div>
         </div>
 
-        <div className="py-8">
+        <div className="py-8 grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100 text-sm text-slate-600">
-            <h2 className="font-semibold text-slate-800 text-base mb-2">Authentication Verification Successful</h2>
-            <p>
-              You have successfully completed the authentication handshake via secure HttpOnly session cookies.
-              Protected dashboard functionalities and quiz management modules will be implemented in subsequent phases.
+            <h2 className="font-semibold text-slate-800 text-base mb-2">URL Route Protection Active</h2>
+            <p className="text-xs leading-relaxed text-slate-500">
+              Direct access via browser URL address bar to <code>/admin/dashboard</code> or any protected route is automatically blocked at the Next.js Edge Middleware layer if the valid HttpOnly JWT token is missing.
+            </p>
+          </div>
+
+          <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100 text-sm text-slate-600">
+            <h2 className="font-semibold text-slate-800 text-base mb-2">Role-Based Access Control (RBAC)</h2>
+            <p className="text-xs leading-relaxed text-slate-500">
+              Your session holds role claim: <strong className="text-slate-800">{user?.role}</strong>. Endpoints strictly enforce permissions using FastAPI <code>require_role()</code> and block unauthorized access with HTTP 403 Forbidden.
             </p>
           </div>
         </div>

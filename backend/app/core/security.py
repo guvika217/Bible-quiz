@@ -22,16 +22,21 @@ def get_password_hash(password: str) -> str:
     return password_hash.hash(password)
 
 
-def create_access_token(subject: str | Any, expires_delta: timedelta | None = None) -> str:
-    """Generate a signed JWT access token for user authentication."""
+def create_access_token(
+    subject: str | Any,
+    role: str = "ADMIN",
+    expires_delta: timedelta | None = None,
+) -> str:
+    """Generate a signed JWT access token containing subject and RBAC claims."""
     if expires_delta:
         expire = datetime.now(UTC) + expires_delta
     else:
         expire = datetime.now(UTC) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
 
     to_encode = {
-        "exp": expire,
         "sub": str(subject),
+        "role": str(role),
+        "exp": expire,
         "iat": datetime.now(UTC),
         "type": "access",
     }
@@ -40,7 +45,7 @@ def create_access_token(subject: str | Any, expires_delta: timedelta | None = No
 
 
 def decode_access_token(token: str) -> dict[str, Any] | None:
-    """Decode and validate a JWT access token."""
+    """Decode and validate a JWT access token signature and expiration."""
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
         return payload

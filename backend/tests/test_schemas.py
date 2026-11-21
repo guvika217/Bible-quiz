@@ -24,17 +24,20 @@ from app.schemas.quiz import (
     QuizStatus,
 )
 from app.schemas.user import (
+    AccountStatus,
     UserCreate,
     UserResponse,
+    UserRole,
 )
 
 # --- 1. USER SCHEMAS TESTS ---
 
 def test_user_create_valid():
-    user = UserCreate(name="Admin User", email="admin@example.com", password="SecurePassword123")
+    user = UserCreate(name="Admin User", email="admin@example.com", password="SecurePassword123", role=UserRole.ADMIN)
     assert user.name == "Admin User"
     assert user.email == "admin@example.com"
     assert user.password == "SecurePassword123"
+    assert user.role == UserRole.ADMIN
 
 
 def test_user_create_invalid_email():
@@ -45,11 +48,22 @@ def test_user_create_invalid_email():
 def test_user_response_security():
     uid = uuid4()
     now = datetime.now(UTC)
-    resp = UserResponse(id=uid, name="Admin", email="admin@example.com", created_at=now, updated_at=now)
+    resp = UserResponse(
+        id=uid,
+        name="Admin",
+        email="admin@example.com",
+        role=UserRole.ADMIN,
+        account_status=AccountStatus.ACTIVE,
+        email_verified=True,
+        created_at=now,
+        updated_at=now,
+    )
     data = resp.model_dump()
     assert "password_hash" not in data
     assert "password" not in data
     assert data["id"] == uid
+    assert data["role"] == "ADMIN"
+    assert data["account_status"] == "ACTIVE"
 
 
 # --- 2. QUIZ SCHEMAS TESTS ---
@@ -197,7 +211,6 @@ def test_answer_submit_valid():
         selected_answer="Noah",
     )
     assert sub.selected_answer == "Noah"
-    # Ensure participant submission model does NOT have scoring fields
     dump = sub.model_dump()
     assert "is_correct" not in dump
     assert "points_awarded" not in dump
