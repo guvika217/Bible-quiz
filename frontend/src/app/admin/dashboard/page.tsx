@@ -16,6 +16,7 @@ export default function AdminDashboardPage() {
   const [user, setUser] = useState<User | null>(null);
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [selectedQuizId, setSelectedQuizId] = useState<string>("");
+  const [searchQuery, setSearchQuery] = useState<string>("");
   const [analytics, setAnalytics] = useState<QuizPerformanceAnalytics | null>(null);
 
   const [isLoadingUser, setIsLoadingUser] = useState(true);
@@ -289,14 +290,39 @@ export default function AdminDashboardPage() {
 
           {/* Leaderboard Table Section */}
           <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="p-6 sm:p-8 border-b border-slate-100 flex items-center justify-between">
+            <div className="p-6 sm:p-8 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <h2 className="text-lg font-bold text-slate-900">Ranked Player Leaderboard</h2>
                 <p className="text-xs text-slate-500">Sorted by total points, time taken, and completion timestamp</p>
               </div>
-              <span className="text-xs font-semibold bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full border border-emerald-100">
-                {analytics.top_leaderboard.length} Entries
-              </span>
+              <div className="flex items-center gap-3">
+                {/* Search Bar Input */}
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 text-xs">
+                    🔍
+                  </span>
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search participant name..."
+                    className="pl-8 pr-4 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 w-48 sm:w-64"
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery("")}
+                      className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-xs text-slate-400 hover:text-slate-600"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+                <span className="text-xs font-semibold bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-xl border border-emerald-100 whitespace-nowrap">
+                  {analytics.top_leaderboard.filter((e) =>
+                    e.participant_name.toLowerCase().includes(searchQuery.toLowerCase().trim())
+                  ).length} Entries
+                </span>
+              </div>
             </div>
 
             {analytics.top_leaderboard.length === 0 ? (
@@ -317,7 +343,11 @@ export default function AdminDashboardPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                    {analytics.top_leaderboard.map((entry) => (
+                    {analytics.top_leaderboard
+                      .filter((entry) =>
+                        entry.participant_name.toLowerCase().includes(searchQuery.toLowerCase().trim())
+                      )
+                      .map((entry) => (
                       <tr key={entry.attempt_id} className="hover:bg-slate-50/70 transition">
                         <td className="py-4 px-6">
                           <span

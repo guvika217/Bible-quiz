@@ -50,6 +50,11 @@ export default function QuizzesPage() {
       return;
     }
 
+    if (quizzes.some((q) => q.title.trim().toLowerCase() === title.toLowerCase())) {
+      setError(`A quiz named "${title}" already exists. Please choose a different title.`);
+      return;
+    }
+
     setIsSubmitting(true);
     setError(null);
 

@@ -91,6 +91,11 @@ class QuizService:
 
     @staticmethod
     async def create_quiz(quiz_in: QuizCreate, owner_id: UUID) -> QuizResponse:
+        trimmed_title = quiz_in.title.strip()
+        existing = await QuizRepository.get_by_title(trimmed_title)
+        if existing:
+            raise AppException(f"A quiz with the name '{trimmed_title}' already exists. Please choose a unique name.", status_code=400)
+
         now = datetime.now(UTC).isoformat()
         quiz_id = uuid4()
         join_code = quiz_in.join_code or f"BQ{str(uuid4())[:6].upper()}"

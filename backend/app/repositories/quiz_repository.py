@@ -41,6 +41,17 @@ class QuizRepository:
         return results[0] if results else None
 
     @staticmethod
+    async def get_by_title(title: str) -> dict[str, Any] | None:
+        """Fetch quiz by exact case-insensitive title."""
+        sql = (
+            "SELECT id, owner_id, title, description, join_code, status, "
+            "question_count, time_limit_seconds, settings, created_at, updated_at "
+            "FROM quizzes WHERE lower(trim(title)) = lower(trim(?)) LIMIT 1;"
+        )
+        results = await d1_client.execute(sql, [title.strip()])
+        return results[0] if results else None
+
+    @staticmethod
     async def create_quiz(quiz_data: dict[str, Any]) -> dict[str, Any]:
         """Insert a new quiz into Cloudflare D1."""
         sql = (
