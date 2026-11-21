@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Header, Footer } from "@/components/layout";
 import { AuthProvider } from "@/components/layout/AuthContext";
+import { FloatingRefreshButton } from "@/components/common/FloatingRefreshButton";
 import "./globals.css";
 
 export const viewport: Viewport = {
@@ -26,6 +27,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col font-sans text-slate-800">
         <AuthProvider>
           <Header />
+          <FloatingRefreshButton />
           <main className="flex-1">{children}</main>
           <Footer />
         </AuthProvider>
