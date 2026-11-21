@@ -109,14 +109,14 @@ export const Header: React.FC = () => {
                   {isSuperAdmin && (
                     <Link
                       href="/admin/superadmin"
-                      className={`text-xs sm:text-sm font-bold transition-colors flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg ${
+                      className={`text-xs sm:text-sm font-semibold transition-colors flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg ${
                         pathname === "/admin/superadmin"
-                          ? "text-amber-800 bg-amber-100"
-                          : "text-amber-700 hover:text-amber-800 hover:bg-amber-50"
+                          ? "text-indigo-600 bg-indigo-50 font-bold"
+                          : "text-slate-600 hover:text-indigo-600 hover:bg-slate-50"
                       }`}
                     >
-                      <span>⚡</span>
-                      <span>SuperAdmin</span>
+                      <span>👥</span>
+                      <span>Users</span>
                     </Link>
                   )}
                 </>
