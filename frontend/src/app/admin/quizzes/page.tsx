@@ -17,6 +17,8 @@ export default function QuizzesPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
+
   useEffect(() => {
     let isMounted = true;
     authService
@@ -63,6 +65,15 @@ export default function QuizzesPage() {
       setError(err instanceof Error ? err.message : "Failed to create quiz");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleShareQuiz = (joinCode: string) => {
+    if (typeof window !== "undefined") {
+      const publicLink = `${window.location.origin}/quiz?code=${joinCode}`;
+      navigator.clipboard.writeText(publicLink);
+      setCopiedCode(joinCode);
+      setTimeout(() => setCopiedCode(null), 2500);
     }
   };
 
@@ -174,13 +185,27 @@ export default function QuizzesPage() {
                   </p>
                 </div>
 
-                <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-xs">
-                  <Link
-                    href={`/admin/quizzes/create?quizId=${quiz.id}`}
-                    className="font-semibold text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100 transition-colors"
-                  >
-                    Edit Questions ✎
-                  </Link>
+                <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between gap-2 text-xs">
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href={`/admin/quizzes/create?quizId=${quiz.id}`}
+                      className="font-semibold text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100 transition-colors"
+                    >
+                      Edit Questions ✎
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => handleShareQuiz(quiz.join_code)}
+                      className={`font-semibold px-3 py-1.5 rounded-lg border transition-all flex items-center gap-1 ${
+                        copiedCode === quiz.join_code
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                          : "bg-slate-50 text-slate-700 hover:text-indigo-600 hover:bg-indigo-50 border-slate-200"
+                      }`}
+                    >
+                      <span>{copiedCode === quiz.join_code ? "✓" : "🔗"}</span>
+                      <span>{copiedCode === quiz.join_code ? "Copied!" : "Share Link"}</span>
+                    </button>
+                  </div>
                   <Link
                     href={`/admin/dashboard?quizId=${quiz.id}`}
                     className="font-semibold text-slate-600 hover:text-slate-900 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 transition-colors"
