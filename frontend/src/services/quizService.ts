@@ -1,5 +1,14 @@
 import { apiClient } from "./apiClient";
-import type { Quiz, QuizCreateInput, QuizPerformanceAnalytics } from "@/types/quiz";
+import type {
+  AdminQuestion,
+  AttemptResult,
+  ParticipantAttemptSession,
+  PublicQuizInfo,
+  QuestionCreateInput,
+  Quiz,
+  QuizCreateInput,
+  QuizPerformanceAnalytics,
+} from "@/types/quiz";
 
 export const quizService = {
   /**
@@ -10,6 +19,13 @@ export const quizService = {
   },
 
   /**
+   * Get single quiz
+   */
+  getQuiz: (quizId: string): Promise<Quiz> => {
+    return apiClient.get<Quiz>(`/quizzes/${quizId}`);
+  },
+
+  /**
    * Create a new quiz
    */
   createQuiz: (input: QuizCreateInput): Promise<Quiz> => {
@@ -17,7 +33,62 @@ export const quizService = {
   },
 
   /**
-   * Get leaderboard and player performance metrics for a specific quiz
+   * Get admin questions list
+   */
+  getAdminQuestions: (quizId: string): Promise<AdminQuestion[]> => {
+    return apiClient.get<AdminQuestion[]>(`/quizzes/${quizId}/questions`);
+  },
+
+  /**
+   * Add question to a quiz
+   */
+  addQuestion: (quizId: string, input: QuestionCreateInput): Promise<AdminQuestion> => {
+    return apiClient.post<AdminQuestion>(`/quizzes/${quizId}/questions`, input);
+  },
+
+  /**
+   * Delete question
+   */
+  deleteQuestion: (quizId: string, questionId: string): Promise<{ message: string }> => {
+    return apiClient.request<{ message: string }>(`/quizzes/${quizId}/questions/${questionId}`, {
+      method: "DELETE",
+    });
+  },
+
+  /**
+   * Public: Get quiz metadata before joining
+   */
+  getPublicQuizInfo: (joinCode: string): Promise<PublicQuizInfo> => {
+    return apiClient.get<PublicQuizInfo>(`/quizzes/public/${joinCode}`);
+  },
+
+  /**
+   * Public: Join quiz with participant name
+   */
+  joinQuiz: (joinCode: string, participantName: string): Promise<ParticipantAttemptSession> => {
+    return apiClient.post<ParticipantAttemptSession>("/quizzes/public/join", {
+      join_code: joinCode,
+      participant_name: participantName,
+    });
+  },
+
+  /**
+   * Public: Submit answers and complete attempt
+   */
+  submitQuizAttempt: (
+    attemptId: string,
+    answers: Array<{ question_id: string; selected_answer: string }>,
+    durationSeconds: number
+  ): Promise<AttemptResult> => {
+    return apiClient.post<AttemptResult>("/quizzes/public/submit", {
+      attempt_id: attemptId,
+      answers,
+      duration_seconds: durationSeconds,
+    });
+  },
+
+  /**
+   * Get leaderboard and performance analytics
    */
   getPerformanceAnalytics: (quizId: string): Promise<QuizPerformanceAnalytics> => {
     return apiClient.get<QuizPerformanceAnalytics>(`/quizzes/${quizId}/performance`);
