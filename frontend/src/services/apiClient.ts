@@ -57,6 +57,7 @@ class ApiClient {
     try {
       const response = await fetch(url, {
         headers: mergedHeaders,
+        credentials: "include", // Supports cross-origin or same-origin session cookies
         ...restOptions,
       });
 

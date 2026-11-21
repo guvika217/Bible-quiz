@@ -15,9 +15,12 @@ export const Header: React.FC = () => {
         </Link>
 
         <nav className="flex items-center gap-6">
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
-            System Online
-          </span>
+          <Link
+            href="/admin/login"
+            className="text-sm font-semibold text-indigo-600 hover:text-indigo-700 bg-indigo-50 px-3.5 py-1.5 rounded-lg border border-indigo-100 transition-colors"
+          >
+            Admin Portal
+          </Link>
           <a
             href="http://localhost:8000/docs"
             target="_blank"

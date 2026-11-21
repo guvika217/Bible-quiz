@@ -1,6 +1,5 @@
 """Backend configuration settings using Pydantic Settings."""
 
-
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -29,6 +28,21 @@ class Settings(BaseSettings):
     # Server binding
     HOST: str = Field(default="0.0.0.0")
     PORT: int = Field(default=8000)
+
+    # Cloudflare D1 Database Integration
+    CLOUDFLARE_API_TOKEN: str = Field(default="")
+    CLOUDFLARE_ACCOUNT_ID: str = Field(default="")
+    CLOUDFLARE_D1_DATABASE_ID: str = Field(default="")
+
+    # Authentication & Session Security
+    SECRET_KEY: str = Field(
+        default="super-secret-bible-quiz-enterprise-session-key-change-in-production"
+    )
+    JWT_ALGORITHM: str = Field(default="HS256")
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=60 * 24)  # 24 hours
+    AUTH_COOKIE_NAME: str = Field(default="admin_access_token")
+    AUTH_COOKIE_SECURE: bool = Field(default=False)  # True in production
+    AUTH_COOKIE_SAMESITE: str = Field(default="lax")
 
 
 settings = Settings()
