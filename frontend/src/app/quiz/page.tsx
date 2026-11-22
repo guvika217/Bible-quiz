@@ -107,14 +107,15 @@ export default function PublicQuizPlayPage() {
     }
   }, [session, selectedAnswers, questionResponseTimes, elapsedSeconds]);
 
-  // Anti-Cheat: Visibility Change, Window Blur, and Fullscreen Exit Detection
+  // Anti-Cheat: Visibility Change, Window Blur, Fullscreen Exit, and Long Press (Circle-to-Search prevention)
   useEffect(() => {
     if (!session || result || isDisqualified) return;
 
     let debounceTimer: NodeJS.Timeout | null = null;
+    let longPressTimer: NodeJS.Timeout | null = null;
 
     const handleCheatViolation = (reason: string) => {
-      // Debounce slightly (500ms) to prevent multiple triggers from one event
+      // Debounce slightly to prevent multiple triggers from one event
       if (debounceTimer) return;
       debounceTimer = setTimeout(() => {
         debounceTimer = null;
@@ -123,7 +124,7 @@ export default function PublicQuizPlayPage() {
       setWarningCount((prev) => {
         const nextCount = prev + 1;
         setWarningMessage(
-          `Security Warning #${nextCount} of 3: ${reason}. Tab switching, window blur, or exiting fullscreen is strictly prohibited.`
+          `Security Warning #${nextCount} of 3: ${reason}. Tab switching, window blur, long pressing, or exiting fullscreen is strictly prohibited.`
         );
         setShowWarningModal(true);
 
@@ -136,12 +137,12 @@ export default function PublicQuizPlayPage() {
 
     const handleVisibilityChange = () => {
       if (document.hidden) {
-        handleCheatViolation("You switched away from the active quiz tab");
+        handleCheatViolation("You switched away from the active quiz tab or background task interrupted");
       }
     };
 
     const handleWindowBlur = () => {
-      handleCheatViolation("The quiz window lost focus");
+      handleCheatViolation("The quiz window lost focus (background task or application switch detected)");
     };
 
     const handleFullscreenChange = () => {
@@ -150,15 +151,63 @@ export default function PublicQuizPlayPage() {
       }
     };
 
+    // Long Press Detection (Threshold: ~2.5 seconds triggers warning to prevent circle to search / AI assistance)
+    const handleTouchStart = () => {
+      longPressTimer = setTimeout(() => {
+        handleCheatViolation("Long pressing on the screen detected (Circle to Search / AI Assistance attempt)");
+      }, 2500);
+    };
+
+    const handleTouchEnd = () => {
+      if (longPressTimer) {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+      }
+    };
+
+    const handleMouseDown = (e: MouseEvent) => {
+      // Only check primary left click or long holding
+      if (e.button === 0) {
+        longPressTimer = setTimeout(() => {
+          handleCheatViolation("Long click/hold on screen detected (External search attempt)");
+        }, 2500);
+      }
+    };
+
+    const handleMouseUp = () => {
+      if (longPressTimer) {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+      }
+    };
+
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+      handleCheatViolation("Context menu / right click detected");
+    };
+
     document.addEventListener("visibilitychange", handleVisibilityChange);
     window.addEventListener("blur", handleWindowBlur);
     document.addEventListener("fullscreenchange", handleFullscreenChange);
+    document.addEventListener("touchstart", handleTouchStart, { passive: true });
+    document.addEventListener("touchend", handleTouchEnd, { passive: true });
+    document.addEventListener("touchcancel", handleTouchEnd, { passive: true });
+    document.addEventListener("mousedown", handleMouseDown);
+    document.addEventListener("mouseup", handleMouseUp);
+    document.addEventListener("contextmenu", handleContextMenu);
 
     return () => {
       if (debounceTimer) clearTimeout(debounceTimer);
+      if (longPressTimer) clearTimeout(longPressTimer);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("blur", handleWindowBlur);
       document.removeEventListener("fullscreenchange", handleFullscreenChange);
+      document.removeEventListener("touchstart", handleTouchStart);
+      document.removeEventListener("touchend", handleTouchEnd);
+      document.removeEventListener("touchcancel", handleTouchEnd);
+      document.removeEventListener("mousedown", handleMouseDown);
+      document.removeEventListener("mouseup", handleMouseUp);
+      document.removeEventListener("contextmenu", handleContextMenu);
     };
   }, [session, result, isDisqualified, triggerDisqualification]);
 
@@ -313,12 +362,25 @@ export default function PublicQuizPlayPage() {
           )}
 
           <div className="pt-4 border-t border-slate-100 flex justify-center">
-            <Link
-              href="/"
-              className="px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl text-sm transition shadow-sm"
+            <button
+              type="button"
+              onClick={() => {
+                // Exit fullscreen if active
+                if (document.fullscreenElement) {
+                  document.exitFullscreen().catch(() => {});
+                }
+                // Try window.close() first (if opened in popup or direct window)
+                window.close();
+                // If the browser prevents window.close(), clear state & redirect to a neutral finished screen
+                setSession(null);
+                setResult(null);
+                window.location.href = "about:blank";
+              }}
+              className="px-6 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-sm transition shadow-sm flex items-center gap-2"
             >
-              Return Home
-            </Link>
+              <span>✕</span>
+              <span>Exit Quiz & Close</span>
+            </button>
           </div>
         </div>
       </div>
@@ -612,8 +674,51 @@ export default function PublicQuizPlayPage() {
             />
           </div>
 
-          <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-[11px] text-slate-500 leading-relaxed">
-            🛡️ <strong>Anti-Cheat Enabled:</strong> The quiz runs in fullscreen. Tab switching or background application focus will trigger a warning. 3 warnings will disqualify the attempt.
+          {/* Explicit Security Rules Checklist Cards */}
+          <div className="space-y-2.5 pt-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block text-left">
+              Official Competition Rules & Anti-Cheat:
+            </span>
+
+            <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 text-left flex items-start gap-3">
+              <span className="text-base">🚫</span>
+              <div>
+                <p className="text-xs font-bold text-slate-800">Rule 1: No Tab Switching</p>
+                <p className="text-[11px] text-slate-500">
+                  Switching browser tabs or minimizing the window will trigger an instant security violation.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 text-left flex items-start gap-3">
+              <span className="text-base">🔒</span>
+              <div>
+                <p className="text-xs font-bold text-slate-800">Rule 2: Strictly 1 Attempt Per Device</p>
+                <p className="text-[11px] text-slate-500">
+                  Only 1 attempt is permitted from this IP address / device. Multiple attempts are blocked.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 text-left flex items-start gap-3">
+              <span className="text-base">🛡️</span>
+              <div>
+                <p className="text-xs font-bold text-slate-800">Rule 3: Background Tasks Blocked</p>
+                <p className="text-[11px] text-slate-500">
+                  Application notifications or active background apps stealing focus will trigger a warning.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 text-left flex items-start gap-3">
+              <span className="text-base">👆</span>
+              <div>
+                <p className="text-xs font-bold text-slate-800">Rule 4: Long-Pressing Screen Prohibited</p>
+                <p className="text-[11px] text-slate-500">
+                  Holding/long pressing on the screen (&gt;2.5s) for Circle to Search or AI assistance triggers a warning. 3 warnings disqualifies.
+                </p>
+              </div>
+            </div>
           </div>
 
           <button
@@ -621,7 +726,7 @@ export default function PublicQuizPlayPage() {
             disabled={isJoining}
             className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-sm shadow-md transition disabled:opacity-50"
           >
-            {isJoining ? "Entering Quiz..." : "Enter Quiz in Fullscreen →"}
+            {isJoining ? "Entering Quiz..." : "Accept Rules & Enter Quiz in Fullscreen →"}
           </button>
         </form>
       </div>
