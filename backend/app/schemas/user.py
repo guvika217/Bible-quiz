@@ -71,6 +71,7 @@ class UserResponse(UserBase):
     role: UserRole = Field(description="User access role")
     email_verified: bool = Field(default=False, description="Whether email is verified")
     account_status: AccountStatus = Field(description="Account status")
+    access_token: str | None = Field(default=None, description="JWT session token for dual cookie/header auth")
     verified_at: datetime | None = Field(default=None, description="Verification timestamp")
     created_at: datetime = Field(description="Creation timestamp in UTC")
     updated_at: datetime = Field(description="Last update timestamp in UTC")

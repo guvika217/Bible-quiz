@@ -27,16 +27,19 @@ async def login(credentials: UserLogin, response: Response) -> UserResponse:
     user: UserResponse = result["user"]
 
     # Set secure HttpOnly cookie with JWT
+    # In production, when frontend (vercel) and backend (render) are on different domains,
+    # samesite="none" and secure=True are required for the browser to send cookies cross-origin.
     response.set_cookie(
         key=settings.AUTH_COOKIE_NAME,
         value=token,
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         httponly=True,
-        secure=settings.AUTH_COOKIE_SECURE,
-        samesite=settings.AUTH_COOKIE_SAMESITE,
+        secure=True if settings.ENVIRONMENT == "production" else settings.AUTH_COOKIE_SECURE,
+        samesite="none" if settings.ENVIRONMENT == "production" else settings.AUTH_COOKIE_SAMESITE,
         path="/",
     )
 
+    user.access_token = token
     return user
 
 

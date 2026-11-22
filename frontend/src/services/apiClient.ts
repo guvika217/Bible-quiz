@@ -54,6 +54,14 @@ class ApiClient {
       mergedHeaders.set("Accept", "application/json");
     }
 
+    // Attach Bearer token from localStorage for seamless cross-domain auth between Vercel and Render
+    if (typeof window !== "undefined") {
+      const storedToken = localStorage.getItem("admin_access_token");
+      if (storedToken && !mergedHeaders.has("Authorization")) {
+        mergedHeaders.set("Authorization", `Bearer ${storedToken}`);
+      }
+    }
+
     try {
       const response = await fetch(url, {
         headers: mergedHeaders,
