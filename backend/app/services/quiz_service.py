@@ -258,6 +258,13 @@ class QuizService:
     async def delete_question(quiz_id: UUID, question_id: UUID) -> bool:
         return await QuestionRepository.delete_question(str(question_id), str(quiz_id))
 
+    @staticmethod
+    async def delete_attempt(attempt_id: UUID) -> bool:
+        attempt = await AttemptRepository.get_attempt_by_id(str(attempt_id))
+        if not attempt:
+            raise AppException("Attempt not found", status_code=404)
+        return await AttemptRepository.delete_attempt(str(attempt_id))
+
     # --- PUBLIC PARTICIPANT PLAY FLOW WITH SPEED + ACCURACY SCORING ---
 
     @staticmethod

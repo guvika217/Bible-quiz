@@ -22,6 +22,8 @@ export default function AdminDashboardPage() {
 
   const [isLoadingUser, setIsLoadingUser] = useState(true);
   const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(false);
+  const [deletingAttemptId, setDeletingAttemptId] = useState<string | null>(null);
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
 
   // 1. Authenticate user & load quiz list
   useEffect(() => {
@@ -82,6 +84,29 @@ export default function AdminDashboardPage() {
     setSelectedQuizId(quizId);
     if (quizId) {
       setIsLoadingAnalytics(true);
+    }
+  };
+
+  // Delete participant attempt to give them a second chance / reset IP lock
+  const handleDeleteAttempt = async (attemptId: string, participantName: string) => {
+    if (!window.confirm(`Delete attempt for "${participantName}"? This will allow them to retake the quiz from their IP.`)) {
+      return;
+    }
+
+    setDeletingAttemptId(attemptId);
+    setActionMessage(null);
+    try {
+      await quizService.deleteAttempt(attemptId);
+      setActionMessage(`Attempt for "${participantName}" deleted. They may now retake the quiz.`);
+      // Reload analytics for current quiz
+      if (selectedQuizId) {
+        const fresh = await quizService.getPerformanceAnalytics(selectedQuizId);
+        setAnalytics(fresh);
+      }
+    } catch {
+      setActionMessage("Failed to delete attempt. Please try again.");
+    } finally {
+      setDeletingAttemptId(null);
     }
   };
 
@@ -201,6 +226,14 @@ export default function AdminDashboardPage() {
           >
             <span>🏆</span> Public Hall
           </Link>
+          {user?.role === "SUPER_ADMIN" && (
+            <Link
+              href="/admin/superadmin"
+              className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-xl shadow-md transition flex items-center gap-1.5"
+            >
+              <span>⚡</span> Super Admin Users
+            </Link>
+          )}
           <button
             type="button"
             onClick={handleExportCSV}
@@ -211,6 +244,18 @@ export default function AdminDashboardPage() {
           </button>
         </div>
       </div>
+
+      {actionMessage && (
+        <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-900 text-xs font-semibold flex items-center justify-between animate-in fade-in">
+          <span>✓ {actionMessage}</span>
+          <button
+            onClick={() => setActionMessage(null)}
+            className="text-emerald-700 hover:text-emerald-900 font-bold ml-4"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Quiz Selector & Quick Details Banner */}
       <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -430,6 +475,7 @@ export default function AdminDashboardPage() {
                       <th className="py-4 px-6">Correct / Wrong</th>
                       <th className="py-4 px-6">Time (Avg)</th>
                       <th className="py-4 px-6">Security Check</th>
+                      <th className="py-4 px-6 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
@@ -494,6 +540,18 @@ export default function AdminDashboardPage() {
                               ✓ Verified Clean
                             </span>
                           )}
+                        </td>
+                        <td className="py-4 px-6 text-right">
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteAttempt(entry.attempt_id, entry.participant_name)}
+                            disabled={deletingAttemptId === entry.attempt_id}
+                            title="Delete attempt & reset IP check so participant can retry"
+                            className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-bold transition disabled:opacity-50 inline-flex items-center gap-1"
+                          >
+                            <span>🗑️</span>
+                            <span>{deletingAttemptId === entry.attempt_id ? "Deleting..." : "Allow Retry"}</span>
+                          </button>
                         </td>
                       </tr>
                     ))}

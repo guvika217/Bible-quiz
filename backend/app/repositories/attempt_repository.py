@@ -47,11 +47,18 @@ class AttemptRepository:
         sql = (
             "SELECT id, quiz_id, participant_name, score, max_score, "
             "correct_count, incorrect_count, completion_status, started_at, completed_at, "
-            "duration_seconds, total_time_seconds, avg_time_seconds, warning_count "
+            "duration_seconds, total_time_seconds, avg_time_seconds, warning_count, ip_address "
             "FROM quiz_attempts WHERE id = ? LIMIT 1;"
         )
         results = await d1_client.execute(sql, [str(attempt_id)])
         return results[0] if results else None
+
+    @staticmethod
+    async def delete_attempt(attempt_id: str) -> bool:
+        """Delete an attempt and its answers, freeing the IP address to try again."""
+        await d1_client.execute("DELETE FROM attempt_answers WHERE attempt_id = ?;", [str(attempt_id)])
+        await d1_client.execute("DELETE FROM quiz_attempts WHERE id = ?;", [str(attempt_id)])
+        return True
 
     @staticmethod
     async def record_answers_batch(answers: list[dict[str, Any]]) -> None:

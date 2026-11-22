@@ -109,6 +109,15 @@ export const quizService = {
   },
 
   /**
+   * Delete attempt permanently, clearing IP check for retry
+   */
+  deleteAttempt: (attemptId: string): Promise<{ message: string }> => {
+    return apiClient.request<{ message: string }>(`/quizzes/attempts/${attemptId}`, {
+      method: "DELETE",
+    });
+  },
+
+  /**
    * Get leaderboard and performance analytics
    */
   getPerformanceAnalytics: (quizId: string): Promise<QuizPerformanceAnalytics> => {

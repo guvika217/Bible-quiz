@@ -50,13 +50,17 @@ export default function AdminLoginPage() {
     setIsSubmitting(true);
 
     try {
-      await authService.login({
+      const loggedUser = await authService.login({
         email: email.trim(),
         password,
       });
 
-      // Navigate to dashboard on success
-      router.push("/admin/dashboard");
+      // Role-based routing: Super Admins go to SuperAdmin Control Center, Admins go to Quizzes/Dashboard
+      if (loggedUser.role === "SUPER_ADMIN") {
+        router.push("/admin/superadmin");
+      } else {
+        router.push("/admin/dashboard");
+      }
       router.refresh();
     } catch (err) {
       if (err instanceof ApiClientError) {

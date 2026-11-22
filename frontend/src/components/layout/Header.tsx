@@ -51,7 +51,7 @@ export const Header: React.FC = () => {
             ✝
           </div>
           <span className="font-extrabold text-xl text-slate-900 tracking-tight">
-            BibleQuiz<span className="text-indigo-600">.Platform</span>
+            Bible Quiz
           </span>
         </Link>
 
@@ -171,7 +171,7 @@ export const Header: React.FC = () => {
                             onClick={() => setDropdownOpen(false)}
                             className="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-indigo-600 transition-colors"
                           >
-                            <span>📝</span> Manage All Quizzes
+                            <span>📝</span> Manage Quizzes
                           </Link>
                           <Link
                             href="/admin/dashboard"
@@ -180,6 +180,15 @@ export const Header: React.FC = () => {
                           >
                             <span>📊</span> Performance Dashboard
                           </Link>
+                          {isSuperAdmin && (
+                            <Link
+                              href="/admin/superadmin"
+                              onClick={() => setDropdownOpen(false)}
+                              className="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-amber-700 hover:bg-amber-50 hover:text-amber-800 transition-colors"
+                            >
+                              <span>⚡</span> Super Admin Users
+                            </Link>
+                          )}
                         </div>
 
                         <div className="border-t border-slate-100 pt-1">

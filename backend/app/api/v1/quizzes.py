@@ -125,6 +125,20 @@ async def delete_question(
     return {"message": "Question deleted successfully"}
 
 
+@router.delete(
+    "/attempts/{attempt_id}",
+    status_code=status.HTTP_200_OK,
+    summary="Delete Participant Attempt",
+    description="Deletes a participant attempt and submitted answers, allowing them a retry from their IP.",
+)
+async def delete_attempt(
+    attempt_id: UUID,
+    _: UserResponse = Depends(get_current_user),
+) -> dict[str, str]:
+    await QuizService.delete_attempt(attempt_id)
+    return {"message": "Attempt deleted successfully. The participant may now retry."}
+
+
 # --- PUBLIC PARTICIPANT PLAY FLOW ---
 
 @router.get(
