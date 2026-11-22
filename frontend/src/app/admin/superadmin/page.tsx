@@ -91,14 +91,6 @@ export default function SuperAdminDashboardPage() {
     }
   };
 
-  const handleLogout = async () => {
-    try {
-      await authService.logout();
-    } finally {
-      router.replace("/admin/login");
-    }
-  };
-
   if (isLoading) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3">
@@ -154,12 +146,6 @@ export default function SuperAdminDashboardPage() {
           >
             Manage Quizzes
           </Link>
-          <button
-            onClick={handleLogout}
-            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition"
-          >
-            Sign Out
-          </button>
         </div>
       </div>
 
