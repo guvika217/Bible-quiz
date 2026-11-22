@@ -9,13 +9,22 @@ class AttemptRepository:
     """Data access repository for quiz_attempts and attempt_answers."""
 
     @staticmethod
+    async def has_ip_attempted(quiz_id: str, ip_address: str) -> bool:
+        """Check if an attempt with the same IP address already exists for this quiz."""
+        if not ip_address:
+            return False
+        sql = "SELECT id FROM quiz_attempts WHERE quiz_id = ? AND ip_address = ? LIMIT 1;"
+        results = await d1_client.execute(sql, [str(quiz_id), ip_address])
+        return len(results) > 0
+
+    @staticmethod
     async def create_attempt(data: dict[str, Any]) -> dict[str, Any]:
         """Create a participant quiz attempt."""
         sql = (
             "INSERT INTO quiz_attempts (id, quiz_id, participant_name, score, max_score, "
             "correct_count, incorrect_count, completion_status, started_at, total_time_seconds, "
-            "avg_time_seconds, warning_count) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0.0, 0);"
+            "avg_time_seconds, warning_count, ip_address) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0.0, 0, ?);"
         )
         params = [
             data["id"],
@@ -27,6 +36,7 @@ class AttemptRepository:
             data.get("incorrect_count", 0),
             data.get("completion_status", "in_progress"),
             data["started_at"],
+            data.get("ip_address"),
         ]
         await d1_client.execute(sql, params)
         return data

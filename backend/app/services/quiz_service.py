@@ -276,10 +276,19 @@ class QuizService:
         }
 
     @staticmethod
-    async def join_quiz(join_input: AttemptJoin) -> dict[str, Any]:
+    async def join_quiz(join_input: AttemptJoin, client_ip: str | None = None) -> dict[str, Any]:
         quiz = await QuizRepository.get_by_join_code(join_input.join_code)
         if not quiz:
             raise AppException("Quiz not found with this join code", status_code=404)
+
+        # 1 IP per quiz restriction
+        if client_ip and client_ip not in ("127.0.0.1", "::1", "localhost", "testclient"):
+            has_attempted = await AttemptRepository.has_ip_attempted(quiz["id"], client_ip)
+            if has_attempted:
+                raise AppException(
+                    "You have already participated in this quiz from this device / IP address. Multiple entries are not permitted.",
+                    status_code=400,
+                )
 
         now = datetime.now(UTC).isoformat()
         attempt_id = uuid4()
@@ -316,6 +325,7 @@ class QuizService:
             "incorrect_count": 0,
             "completion_status": "in_progress",
             "started_at": now,
+            "ip_address": client_ip,
         }
         await AttemptRepository.create_attempt(attempt_data)
 

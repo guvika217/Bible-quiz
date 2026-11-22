@@ -29,6 +29,11 @@ export default function PublicQuizPlayPage() {
   const [elapsedSeconds, setElapsedSeconds] = useState<number>(0);
   const [questionElapsed, setQuestionElapsed] = useState<number>(0);
 
+  // Engagement Enhancements State
+  const [streak, setStreak] = useState<number>(0);
+  const [selectedOptionTemp, setSelectedOptionTemp] = useState<string | null>(null);
+  const [isTransitioning, setIsTransitioning] = useState<boolean>(false);
+
   // Anti-cheat state
   const [warningCount, setWarningCount] = useState<number>(0);
   const [showWarningModal, setShowWarningModal] = useState<boolean>(false);
@@ -189,9 +194,19 @@ export default function PublicQuizPlayPage() {
 
   // 1-Click Instant Answer Handler: selects choice, records response time, and advances or auto-submits immediately
   const handleSelectChoice = async (questionId: string, choice: string) => {
-    if (!session || isSubmitting) return;
+    if (!session || isSubmitting || isTransitioning) return;
 
     const recordedTime = Math.max(1, questionElapsed);
+
+    // Update streak based on answer speed (speedy answers <= 12s increase streak)
+    if (recordedTime <= 12) {
+      setStreak((prev) => prev + 1);
+    } else {
+      setStreak(0);
+    }
+
+    setSelectedOptionTemp(choice);
+    setIsTransitioning(true);
 
     const updatedAnswers = {
       ...selectedAnswers,
@@ -227,13 +242,16 @@ export default function PublicQuizPlayPage() {
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : "Failed to submit answers");
         setIsSubmitting(false);
+        setIsTransitioning(false);
       }
     } else {
-      // Instant transition to next question (slight 150ms visual feedback so the participant sees their selection click)
+      // Smooth slide & fade transition to next question (200ms)
       setTimeout(() => {
         setCurrentIndex((prev) => prev + 1);
         setQuestionElapsed(0);
-      }, 150);
+        setSelectedOptionTemp(null);
+        setIsTransitioning(false);
+      }, 200);
     }
   };
 
@@ -311,6 +329,22 @@ export default function PublicQuizPlayPage() {
   if (session && currentQuestion) {
     const answeredCount = Object.keys(selectedAnswers).length;
 
+    // Calculate Speed Multiplier & Flame Bar based on current questionElapsed
+    // <= 5s: 1.5x Flame Boost (100% full)
+    // <= 10s: 1.2x Flame Boost (65% full)
+    // <= 15s: 1.0x Normal (35% full)
+    // > 15s: Cooled down (15% bar)
+    const flameMultiplier =
+      questionElapsed <= 5 ? "1.5x" : questionElapsed <= 10 ? "1.2x" : "1.0x";
+    const flamePercentage =
+      questionElapsed <= 5
+        ? 100
+        : questionElapsed <= 10
+        ? Math.max(40, 100 - (questionElapsed - 5) * 12)
+        : Math.max(10, 40 - (questionElapsed - 10) * 6);
+    const isFlameHigh = questionElapsed <= 5;
+    const isFlameCooling = questionElapsed > 15;
+
     return (
       <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
         {/* Anti-Cheat Warning Modal */}
@@ -342,15 +376,32 @@ export default function PublicQuizPlayPage() {
         )}
 
         {/* Game Header Bar */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex items-center justify-between">
+        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-base font-bold text-slate-900">{session.quiz.title}</h1>
             <p className="text-xs text-slate-500">Player: {session.attempt.participant_name}</p>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
+            {/* Streak Counter Badge */}
+            <div
+              className={`px-3 py-1.5 rounded-full text-xs font-bold border flex items-center gap-1.5 transition-all shadow-sm ${
+                streak >= 3
+                  ? "bg-amber-500 text-white border-amber-600 animate-bounce shadow-amber-200"
+                  : streak > 0
+                  ? "bg-amber-50 text-amber-800 border-amber-300"
+                  : "bg-slate-50 text-slate-500 border-slate-200"
+              }`}
+            >
+              <span>🔥</span>
+              <span>
+                {streak > 0 ? `${streak} In a Row!` : "0 Streak"}
+              </span>
+            </div>
+
+            {/* Anti-cheat status */}
             <span
-              className={`px-3 py-1 rounded-full text-xs font-bold border flex items-center gap-1.5 transition-all ${
+              className={`px-3 py-1.5 rounded-full text-xs font-bold border flex items-center gap-1.5 transition-all ${
                 warningCount > 0
                   ? "bg-rose-100 text-rose-800 border-rose-300 animate-pulse"
                   : "bg-emerald-50 text-emerald-700 border-emerald-200"
@@ -358,24 +409,75 @@ export default function PublicQuizPlayPage() {
             >
               <span>{warningCount > 0 ? "⚠️" : "🛡️"}</span>
               <span>
-                {warningCount > 0 ? `${warningCount}/3 Security Warnings` : "0/3 Warnings (Clean)"}
+                {warningCount > 0 ? `${warningCount}/3 Warnings` : "Clean"}
               </span>
             </span>
+
             <div className="text-right">
               <span className="text-[10px] uppercase font-bold text-slate-400 block">Question</span>
               <span className="text-sm font-bold text-indigo-600">
                 {currentIndex + 1} / {session.questions.length}
               </span>
             </div>
-            <div className="text-right pl-4 border-l border-slate-200">
-              <span className="text-[10px] uppercase font-bold text-slate-400 block">Question Time</span>
+            <div className="text-right pl-3 border-l border-slate-200">
+              <span className="text-[10px] uppercase font-bold text-slate-400 block">Time</span>
               <span className="text-sm font-bold font-mono text-slate-900">{questionElapsed}s</span>
             </div>
           </div>
         </div>
 
-        {/* Question Card */}
-        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-md space-y-6">
+        {/* Live Speed Multiplier Flame / Energy Bar */}
+        <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm space-y-2">
+          <div className="flex items-center justify-between text-xs font-bold">
+            <div className="flex items-center gap-1.5">
+              <span className={`text-sm ${isFlameHigh ? "animate-pulse" : ""}`}>
+                {isFlameCooling ? "❄️" : "⚡"}
+              </span>
+              <span
+                className={
+                  isFlameHigh
+                    ? "text-amber-600 font-extrabold"
+                    : isFlameCooling
+                    ? "text-slate-400 font-medium"
+                    : "text-indigo-600"
+                }
+              >
+                Speed Energy ({flameMultiplier} Boost)
+              </span>
+            </div>
+            <span className="text-[11px] font-mono text-slate-500">
+              {isFlameHigh
+                ? "⚡ ULTRA FAST (<5s)"
+                : isFlameCooling
+                ? "❄️ Cooled Down (>15s)"
+                : "⚡ Fast Answer"}
+            </span>
+          </div>
+
+          {/* Meter progress bar */}
+          <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden border border-slate-200">
+            <div
+              className={`h-full transition-all duration-300 ease-out rounded-full ${
+                isFlameHigh
+                  ? "bg-gradient-to-r from-amber-400 to-rose-500 shadow-lg shadow-amber-300/50"
+                  : isFlameCooling
+                  ? "bg-slate-300"
+                  : "bg-gradient-to-r from-indigo-500 to-amber-400"
+              }`}
+              style={{ width: `${flamePercentage}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Question Card with Slide & Fade Animation */}
+        <div
+          key={currentQuestion.id}
+          className={`bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-md space-y-6 transition-all duration-200 ${
+            isTransitioning
+              ? "opacity-60 translate-x-1"
+              : "opacity-100 translate-x-0 animate-in fade-in slide-in-from-right-4 duration-300"
+          }`}
+        >
           <div className="flex items-center justify-between text-xs text-slate-400 font-semibold">
             <span>Points: {currentQuestion.points} pt</span>
             <span>Answered: {answeredCount} / {session.questions.length}</span>
@@ -385,26 +487,39 @@ export default function PublicQuizPlayPage() {
             {currentQuestion.question_text}
           </h2>
 
-          {/* 4 Choices Radio Cards */}
+          {/* 4 Choices Radio Cards with Ripple/Wave Effect on Click */}
           <div className="space-y-3 pt-2">
             {currentQuestion.options.map((opt, idx) => {
               const isSelected = selectedAnswers[currentQuestion.id] === opt;
+              const isClickedJustNow = selectedOptionTemp === opt;
               const letter = String.fromCharCode(65 + idx);
 
               return (
                 <button
                   type="button"
                   key={idx}
+                  disabled={isTransitioning || isSubmitting}
                   onClick={() => handleSelectChoice(currentQuestion.id, opt)}
-                  className={`w-full text-left p-4 rounded-2xl border transition-all flex items-center gap-3 ${
-                    isSelected
-                      ? "border-indigo-600 bg-indigo-50/70 shadow-sm ring-1 ring-indigo-600"
-                      : "border-slate-200 hover:border-slate-300 bg-white"
+                  className={`w-full text-left p-4 rounded-2xl border transition-all duration-150 flex items-center gap-3 relative overflow-hidden group active:scale-[0.99] ${
+                    isClickedJustNow
+                      ? "border-amber-500 bg-amber-50 shadow-md ring-4 ring-amber-300/60 scale-[1.01]"
+                      : isSelected
+                      ? "border-indigo-600 bg-indigo-50/70 shadow-sm ring-2 ring-indigo-600"
+                      : "border-slate-200 hover:border-indigo-400 hover:bg-slate-50/80 bg-white"
                   }`}
                 >
+                  {/* Subtle Wave Ripple Effect on Click */}
+                  {isClickedJustNow && (
+                    <span className="absolute inset-0 bg-amber-400/10 pointer-events-none animate-ping" />
+                  )}
+
                   <span
-                    className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs ${
-                      isSelected ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600"
+                    className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs transition-colors ${
+                      isClickedJustNow
+                        ? "bg-amber-500 text-white"
+                        : isSelected
+                        ? "bg-indigo-600 text-white"
+                        : "bg-slate-100 text-slate-600 group-hover:bg-indigo-100 group-hover:text-indigo-700"
                     }`}
                   >
                     {letter}
@@ -431,7 +546,7 @@ export default function PublicQuizPlayPage() {
           {/* Navigation Controls */}
           <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
             <span className="text-xs text-slate-400 font-medium italic">
-              ⚡ 1-Click Answer: Tap an option to record and immediately advance
+              ⚡ 1-Click Answer: Instant ripple feedback & slide transition
             </span>
 
             {isSubmitting && (

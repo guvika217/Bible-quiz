@@ -3,7 +3,7 @@
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, status
 
 from app.core.dependencies import get_current_user
 from app.schemas.attempt import AttemptJoin, AttemptResultResponse
@@ -142,8 +142,19 @@ async def get_public_quiz(join_code: str) -> dict[str, Any]:
     summary="Participant Joins Quiz",
     description="Collects participant name and join code, returns attempt session and questions.",
 )
-async def join_quiz(join_input: AttemptJoin) -> dict[str, Any]:
-    return await QuizService.join_quiz(join_input)
+async def join_quiz(join_input: AttemptJoin, request: Request) -> dict[str, Any]:
+    # Extract client IP address accurately handling proxies/Cloudflare
+    client_ip: str | None = None
+    cf_connecting_ip = request.headers.get("cf-connecting-ip")
+    x_forwarded_for = request.headers.get("x-forwarded-for")
+    if cf_connecting_ip:
+        client_ip = cf_connecting_ip.strip()
+    elif x_forwarded_for:
+        client_ip = x_forwarded_for.split(",")[0].strip()
+    elif request.client and request.client.host:
+        client_ip = request.client.host
+
+    return await QuizService.join_quiz(join_input, client_ip=client_ip)
 
 
 @router.post(
