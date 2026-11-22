@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = Field(default="development")
     DEBUG: bool = Field(default=True)
 
-    # CORS configuration
+    # CORS configuration (supports comma-separated origins string or list)
     CORS_ORIGINS: list[str] = Field(
         default=["http://localhost:3000", "http://127.0.0.1:3000"]
     )

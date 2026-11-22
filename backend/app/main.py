@@ -36,9 +36,13 @@ def create_application() -> FastAPI:
     )
 
     # Configure Cross-Origin Resource Sharing
+    allow_origins = settings.CORS_ORIGINS
+    if isinstance(allow_origins, str):
+        allow_origins = [o.strip() for o in allow_origins.split(",") if o.strip()]
+
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.CORS_ORIGINS,
+        allow_origins=allow_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
