@@ -56,12 +56,12 @@ export default function AdminLoginPage() {
       });
 
       // Role-based routing: Super Admins go to SuperAdmin Control Center, Admins go to Quizzes/Dashboard
+      // Use window.location.href to guarantee full hard navigation with cookies & headers attached
       if (loggedUser.role === "SUPER_ADMIN") {
-        router.push("/admin/superadmin");
+        window.location.href = "/admin/superadmin";
       } else {
-        router.push("/admin/dashboard");
+        window.location.href = "/admin/dashboard";
       }
-      router.refresh();
     } catch (err) {
       if (err instanceof ApiClientError) {
         if (err.statusCode === 401) {
