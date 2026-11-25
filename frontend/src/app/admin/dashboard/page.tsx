@@ -16,6 +16,7 @@ export default function AdminDashboardPage() {
   const [user, setUser] = useState<User | null>(null);
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [selectedQuizId, setSelectedQuizId] = useState<string>("");
+  const [quizSearchInput, setQuizSearchInput] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [analytics, setAnalytics] = useState<QuizPerformanceAnalytics | null>(null);
@@ -257,23 +258,56 @@ export default function AdminDashboardPage() {
         </div>
       )}
 
-      {/* Quiz Selector & Quick Details Banner */}
-      <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3 flex-wrap">
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-            Active Competition:
+      {/* Quiz Selector & Quick Details Banner with Name / ID Search */}
+      <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3 flex-wrap flex-1">
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">
+            Select Competition:
           </span>
+
+          {/* Quick Search Quiz by Name or ID */}
+          <div className="relative">
+            <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 text-xs">
+              🔍
+            </span>
+            <input
+              type="text"
+              value={quizSearchInput}
+              onChange={(e) => setQuizSearchInput(e.target.value)}
+              placeholder="Search quiz name, ID, or code..."
+              className="pl-8 pr-4 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 w-52 sm:w-64"
+            />
+            {quizSearchInput && (
+              <button
+                onClick={() => setQuizSearchInput("")}
+                className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-xs text-slate-400 hover:text-slate-600"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+
           {quizzes.length > 0 ? (
             <select
               value={selectedQuizId}
               onChange={(e) => handleSelectQuiz(e.target.value)}
-              className="px-4 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="px-4 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 max-w-xs truncate"
             >
-              {quizzes.map((q) => (
-                <option key={q.id} value={q.id}>
-                  {q.title} ({q.join_code}) • {q.status.toUpperCase()}
-                </option>
-              ))}
+              {quizzes
+                .filter((q) => {
+                  const s = quizSearchInput.toLowerCase().trim();
+                  if (!s) return true;
+                  return (
+                    q.title.toLowerCase().includes(s) ||
+                    q.id.toLowerCase().includes(s) ||
+                    q.join_code.toLowerCase().includes(s)
+                  );
+                })
+                .map((q) => (
+                  <option key={q.id} value={q.id}>
+                    {q.title} ({q.join_code}) • {q.status.toUpperCase()}
+                  </option>
+                ))}
             </select>
           ) : (
             <span className="text-xs text-slate-500 italic">No quizzes available</span>
@@ -281,12 +315,16 @@ export default function AdminDashboardPage() {
         </div>
 
         {selectedQuiz && (
-          <div className="flex items-center gap-4 text-xs font-semibold">
+          <div className="flex items-center gap-3 text-xs font-semibold flex-wrap">
             <span className="text-slate-500">
               Join Code:{" "}
               <strong className="font-mono text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
                 {selectedQuiz.join_code}
               </strong>
+            </span>
+            <span className="text-slate-400 hidden sm:inline">|</span>
+            <span className="text-slate-500 font-mono text-[11px] truncate max-w-[120px]" title={selectedQuiz.id}>
+              ID: {selectedQuiz.id.slice(0, 8)}...
             </span>
             <span
               className={`px-2.5 py-0.5 rounded-full uppercase text-[11px] font-bold ${
@@ -363,49 +401,187 @@ export default function AdminDashboardPage() {
             </div>
           </div>
 
-          {/* Performance Graph Section */}
-          <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-4">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-              <div>
-                <h2 className="text-lg font-bold text-slate-900">Score & Accuracy Distribution</h2>
-                <p className="text-xs text-slate-500">Distribution histogram across player accuracy tiers</p>
+          {/* Two-Column Analytics Section: Idea 4 (Olympic Podium) + Idea 7 (Grade Curve Bell) */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Widget 1: Top 3 Olympic Podium Spotlight Cards */}
+            <div className="bg-white p-6 sm:p-7 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between space-y-6">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div>
+                  <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                    <span>🏆</span> Top 3 Champions Podium
+                  </h2>
+                  <p className="text-xs text-slate-500">
+                    Spotlight winners filtered by quiz and verified performance
+                  </p>
+                </div>
+                <span className="text-[11px] font-bold px-2.5 py-1 bg-amber-50 text-amber-700 rounded-lg border border-amber-200 uppercase tracking-wider">
+                  Medalists
+                </span>
               </div>
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Performance Tiers</span>
+
+              {filteredLeaderboard.length === 0 ? (
+                <div className="py-12 text-center text-slate-400 text-xs">
+                  No verified contestants available for this competition yet.
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 gap-2 sm:gap-4 items-end pt-4 pb-2">
+                  {/* Silver Medalist (2nd Place) */}
+                  <div className="flex flex-col items-center">
+                    {filteredLeaderboard[1] ? (
+                      <div className="w-full flex flex-col items-center">
+                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-slate-200 to-slate-100 border-2 border-slate-300 shadow flex items-center justify-center text-xl mb-2">
+                          🥈
+                        </div>
+                        <p className="text-xs font-bold text-slate-800 text-center truncate max-w-[90px] sm:max-w-[120px]">
+                          {filteredLeaderboard[1].participant_name}
+                        </p>
+                        <p className="text-sm font-extrabold text-slate-700 mt-0.5">
+                          {filteredLeaderboard[1].score.toLocaleString()} <span className="text-[10px] text-slate-400 font-normal">pts</span>
+                        </p>
+                        <p className="text-[10px] font-semibold text-emerald-600">
+                          {filteredLeaderboard[1].accuracy_percentage}% acc
+                        </p>
+                        <div className="w-full bg-slate-100 border-t-4 border-slate-300 rounded-t-2xl py-3 mt-3 text-center">
+                          <span className="text-xs font-black text-slate-500">2nd Place</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="w-full text-center py-6 border border-dashed border-slate-200 rounded-2xl text-[11px] text-slate-400">
+                        🥈 Empty
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Gold Medalist (1st Place) */}
+                  <div className="flex flex-col items-center -mt-4">
+                    {filteredLeaderboard[0] ? (
+                      <div className="w-full flex flex-col items-center">
+                        <div className="relative">
+                          <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-300 to-yellow-100 border-2 border-amber-400 shadow-md flex items-center justify-center text-3xl mb-2 animate-bounce">
+                            🥇
+                          </div>
+                          <span className="absolute -top-1 -right-1 text-xs">👑</span>
+                        </div>
+                        <p className="text-xs font-black text-slate-900 text-center truncate max-w-[100px] sm:max-w-[140px]">
+                          {filteredLeaderboard[0].participant_name}
+                        </p>
+                        <p className="text-base font-black text-indigo-600 mt-0.5">
+                          {filteredLeaderboard[0].score.toLocaleString()} <span className="text-[10px] text-indigo-400 font-normal">pts</span>
+                        </p>
+                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-600">
+                          <span>{filteredLeaderboard[0].accuracy_percentage}%</span>
+                          <span className="text-slate-300">•</span>
+                          <span className="font-mono text-slate-500">{filteredLeaderboard[0].total_time_seconds}s</span>
+                        </div>
+                        <div className="w-full bg-gradient-to-t from-amber-100 to-amber-50 border-t-4 border-amber-400 rounded-t-2xl py-5 mt-3 text-center shadow-inner">
+                          <span className="text-xs font-black text-amber-800 tracking-wider uppercase">1st Champion</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="w-full text-center py-8 border border-dashed border-amber-200 rounded-2xl text-[11px] text-amber-500">
+                        🥇 No Competitor
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Bronze Medalist (3rd Place) */}
+                  <div className="flex flex-col items-center">
+                    {filteredLeaderboard[2] ? (
+                      <div className="w-full flex flex-col items-center">
+                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-700/20 to-orange-100 border-2 border-amber-600/40 shadow flex items-center justify-center text-xl mb-2">
+                          🥉
+                        </div>
+                        <p className="text-xs font-bold text-slate-800 text-center truncate max-w-[90px] sm:max-w-[120px]">
+                          {filteredLeaderboard[2].participant_name}
+                        </p>
+                        <p className="text-sm font-extrabold text-slate-700 mt-0.5">
+                          {filteredLeaderboard[2].score.toLocaleString()} <span className="text-[10px] text-slate-400 font-normal">pts</span>
+                        </p>
+                        <p className="text-[10px] font-semibold text-emerald-600">
+                          {filteredLeaderboard[2].accuracy_percentage}% acc
+                        </p>
+                        <div className="w-full bg-amber-50/60 border-t-4 border-amber-600/40 rounded-t-2xl py-2 mt-3 text-center">
+                          <span className="text-xs font-black text-amber-900/70">3rd Place</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="w-full text-center py-6 border border-dashed border-slate-200 rounded-2xl text-[11px] text-slate-400">
+                        🥉 Empty
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
-            <div className="pt-4">
-              <div className="h-48 flex items-end justify-between gap-3 sm:gap-6 pb-2 border-b border-slate-200">
-                {analytics.score_distribution.map((bucket) => {
-                  const barHeight =
-                    bucket.count === 0 ? 4 : Math.round((bucket.count / maxBucketCount) * 100);
-
-                  return (
-                    <div
-                      key={bucket.range_label}
-                      className="flex-1 flex flex-col items-center justify-end h-full group"
-                    >
-                      <span className="text-xs font-bold text-slate-700 mb-2 group-hover:text-indigo-600 transition">
-                        {bucket.count}
-                      </span>
-                      <div className="w-full max-w-[48px] bg-slate-100 rounded-t-xl overflow-hidden flex items-end">
-                        <div
-                          style={{ height: `${barHeight}%` }}
-                          className="w-full bg-gradient-to-t from-indigo-600 to-violet-500 rounded-t-xl transition-all duration-500 group-hover:from-indigo-700 group-hover:to-violet-600 shadow-sm"
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
+            {/* Widget 2: Score Percentile & Grade Curve (A, B, C, D, Fail) */}
+            <div className="bg-white p-6 sm:p-7 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div>
+                  <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                    <span>📊</span> Score Percentile & Grade Curve
+                  </h2>
+                  <p className="text-xs text-slate-500">
+                    Grading distribution curve across all submitted test attempts
+                  </p>
+                </div>
+                <span className="text-[11px] font-bold px-2.5 py-1 bg-indigo-50 text-indigo-700 rounded-lg border border-indigo-200 uppercase tracking-wider">
+                  Academic Standard
+                </span>
               </div>
 
-              {/* X-Axis Labels */}
-              <div className="flex justify-between gap-3 sm:gap-6 pt-3 text-center">
-                {analytics.score_distribution.map((bucket) => (
-                  <div key={bucket.range_label} className="flex-1">
-                    <span className="text-xs font-semibold text-slate-600">{bucket.range_label}</span>
+              {(() => {
+                // Compute A, B, C, D, Fail breakdown based on leaderboard accuracy
+                const grades = {
+                  A: { count: 0, label: "Grade A (90-100%)", desc: "Mastery Level", color: "from-emerald-500 to-teal-500", bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200" },
+                  B: { count: 0, label: "Grade B (75-89%)", desc: "Proficient", color: "from-blue-500 to-indigo-500", bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200" },
+                  C: { count: 0, label: "Grade C (50-74%)", desc: "Basic Passing", color: "from-amber-400 to-amber-500", bg: "bg-amber-50", text: "text-amber-800", border: "border-amber-200" },
+                  D: { count: 0, label: "Grade D (35-49%)", desc: "Needs Improvement", color: "from-orange-400 to-orange-500", bg: "bg-orange-50", text: "text-orange-800", border: "border-orange-200" },
+                  Fail: { count: 0, label: "Retake Needed (<35%)", desc: "Retake Required", color: "from-rose-500 to-red-600", bg: "bg-rose-50", text: "text-rose-700", border: "border-rose-200" },
+                };
+
+                const totalEntries = filteredLeaderboard.length;
+                filteredLeaderboard.forEach((entry) => {
+                  const acc = entry.accuracy_percentage;
+                  if (acc >= 90) grades.A.count++;
+                  else if (acc >= 75) grades.B.count++;
+                  else if (acc >= 50) grades.C.count++;
+                  else if (acc >= 35) grades.D.count++;
+                  else grades.Fail.count++;
+                });
+
+                return (
+                  <div className="space-y-3 pt-2">
+                    {Object.entries(grades).map(([key, grade]) => {
+                      const pct = totalEntries > 0 ? Math.round((grade.count / totalEntries) * 100) : 0;
+                      return (
+                        <div key={key} className="space-y-1">
+                          <div className="flex items-center justify-between text-xs font-semibold">
+                            <div className="flex items-center gap-2">
+                              <span className={`w-6 h-6 rounded-lg font-black flex items-center justify-center text-[11px] border ${grade.bg} ${grade.text} ${grade.border}`}>
+                                {key === "Fail" ? "F" : key}
+                              </span>
+                              <span className="text-slate-800 font-bold">{grade.label}</span>
+                              <span className="text-[10px] text-slate-400 hidden sm:inline">({grade.desc})</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-slate-900">{grade.count}</span>
+                              <span className="text-slate-400 text-[11px]">({pct}%)</span>
+                            </div>
+                          </div>
+                          {/* Progress bar */}
+                          <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                            <div
+                              style={{ width: `${pct}%` }}
+                              className={`h-full rounded-full bg-gradient-to-r ${grade.color} transition-all duration-500`}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                ))}
-              </div>
+                );
+              })()}
             </div>
           </div>
 
